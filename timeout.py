@@ -6,20 +6,34 @@ import datetime
 import logging
 import config
 
+# all in minutes
+OLEDTIMEOUT = 1
+TEMPERATURETIMEOUT = 15
+STATIONTIMEOUT = 120
+AUDIOTIMEOUT = 30
+
 class timeout:
 	def __init__(self, verbose=0):
 		self.logger = logging.getLogger(__name__)
 		self.logger.info('Setting timeouts: verbose='+str(verbose))
 		if verbose == 1:
-			self.oledupdatefreq = datetime.timedelta(seconds=60)
-			self.temperatureupdatefreq = datetime.timedelta(minutes=15)
-			self.stationupdatefreq = datetime.timedelta(hours=2)	# a wild guess at how often the bbc change the key
-			self.audiotimeoutfreq = datetime.timedelta(minutes=30)
+			self.logger.info('Timeouts(mins): OLED='+str(OLEDTIMEOUT)
+				+' Temperature='+str(TEMPERATURETIMEOUT)
+				+' Station='+str(STATIONTIMEOUT)
+				+' AudioTimeout='+str(AUDIOTIMEOUT))
+			self.oledupdatefreq = datetime.timedelta(minutes=OLEDTIMEOUT)
+			self.temperatureupdatefreq = datetime.timedelta(minutes=TEMPERATURETIMEOUT)
+			self.stationupdatefreq = datetime.timedelta(minutes=STATIONTIMEOUT)	# a wild guess at how often the bbc change the key
+			self.audiotimeoutfreq = datetime.timedelta(minutes=AUDIOTIMEOUT)
 		else:
-			self.oledupdatefreq = datetime.timedelta(seconds=60)
-			self.temperatureupdatefreq = datetime.timedelta(minutes=15)
-			self.stationupdatefreq = datetime.timedelta(hours=2)	# a wild guess at how often the bbc change the key
-			self.audiotimeoutfreq = datetime.timedelta(minutes=30)
+			self.logger.info('Timeouts(mins): OLED='+str(OLEDTIMEOUT)
+				+' Temperature='+str(TEMPERATURETIMEOUT)
+				+' Station='+str(STATIONTIMEOUT)
+				+' AudioTimeout='+str(AUDIOTIMEOUT))
+			self.oledupdatefreq = datetime.timedelta(minutes=OLEDTIMEOUT)
+			self.temperatureupdatefreq = datetime.timedelta(minutes=TEMPERATURETIMEOUT)
+			self.stationupdatefreq = datetime.timedelta(minutes=STATIONTIMEOUT)	# a wild guess at how often the bbc change the key
+			self.audiotimeoutfreq = datetime.timedelta(minutes=AUDIOTIMEOUT)
 		#initialise timers
 		self.start = datetime.datetime.now()
 		self.oledlastupdate = datetime.datetime.now()

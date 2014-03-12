@@ -1,14 +1,5 @@
 #!/usr/bin/python
-''' 
-  Module to load BBC radio stations.
-  Imported by mpc and thence by iradio.
-  Methods:
-	init
-	stationcount
-	selectstation(station)
-	load2
-	
-'''
+''' Load BBC radio stations into mpd.'''
 import re
 import subprocess
 import time
@@ -18,46 +9,36 @@ import requests
 from bs4 import BeautifulSoup
 
 class bbcradio:
+	# These are the indicies to the url array.
+	URLID = 0
+	URLSTREAM = 1
+	URLDETAILS = 2
+	urls = [["BBCR2",	"r2_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_two" ],
+				["BBCR4",	"r4_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four" ],
+				["BBCR4x",	"r4x_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four_extra"],
+				["BBCR5",	"r5l_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_five_live"],
+				["BBCR6",	"r6_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_6music"]
+				]
+					
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
-		self.urls = [["BBCR2",	"r2_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_two" ],
-					["BBCR4",	"r4_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four" ],
-					["BBCR4x",	"r4x_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four_extra"],
-					["BBCR5",	"r5l_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_five_live"],
-					["BBCR6",	"r6_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_6music"]
-					]
-		# These are the indicies to the above array.
-		self.URLID = 0
-		self.URLSTREAM = 1
-		self.URLDETAILS = 2
+		__all__ = ['stationcount', 'load', 'stationname']		# list the functions available here
 
 	def stationcount(self):
+		'''Return the number of radio station urls.'''
 		return(len(self.urls))
 		
-#	def selectstation(self,station):
-#		if upbuttonpressed == True:
-#			if station < maxstation:
-#				station += 1
-#			else:
-#				station = 0
-#		if downbuttonpressed == True:
-#			if station > 0:
-#				station -= 1
-#			else:
-#				station = maxstation
-#		return(station)
-
-	def load2(self):
-		''' This is the current loader. '''
+	def load(self):
+		'''Load the stations stored in the urls array. '''
 		lines = []
 		maxstation = self.stationcount()
-		self.logger.info("Getting BBC stations loaded")		# refresh periodically
+		self.logger.warning("Getting BBC stations loaded")		# refresh periodically, warning level since hardly ever in log
 		try:
 			subprocess.Popen("rm -f *.pls", shell=True)			# need the -f to force removal of unwritable files
 			q = subprocess.Popen('mpc -q clear', shell=True)
 			q.wait()
 		except:
-			self.logger.warning("Failed to clear old pls files.")
+			self.logger.error('Failed to clear old pls files.', exc_info=True)
 			return(maxstation)
 		for i in self.urls:
 			self.logger.info("Fetching: "+i[self.URLID])
@@ -65,11 +46,10 @@ class bbcradio:
 				p = subprocess.Popen('wget -q http://www.bbc.co.uk/radio/listen/live/'+i[self.URLSTREAM], shell=True)	# need to trap errors here.
 				p.wait()		# need to wait for the last cmd to finish before we can read the file.
 			except HTTPError, e:
-				self.logger.error("Failed to fetch address for "+i[self.URLID])
+				self.logger.error("Failed to fetch address for "+i[self.URLID], exc_info=True)
 				maxstation -= 1					# not as many as we planned
 		for i in self.urls:
 			self.logger.info("Opening the stream file: "+i[self.URLSTREAM])
-#			time.sleep(.5)					# seem to need this for the file to be ready for next line.
 			try:
 				source=open(i[self.URLSTREAM],'r')
 				source.readline()				# this dumps first line of file
@@ -77,16 +57,18 @@ class bbcradio:
 				lines.append(source.readline())
 				source.close()					# do we need this??
 			except:
-				logging.warning("Could not open: "+i[self.URLSTREAM])
+				logging.warning("Could not open: "+i[self.URLSTREAM], exc_info=True)
 		for line in lines:
 			try:
 				q = subprocess.Popen("mpc -q add "+re.escape(line[6:]), shell=True)	# use the re.escape to escape the & which was breaking up the string
 			except:
-				self.logger.warning("Failed to add file to playlist")
+				self.logger.warning("Failed to add file to playlist", exc_info=True)
 			q.wait()
+		self.logger.info("Loaded BBC stations. Number of stations="+str(maxstation))
+		print "Loaded BBC stations. Number of stations="+str(maxstation)
 		return(maxstation)
 		
-	def stationscanner(self):
+	def _stationscanner(self):
 		''' A test routine to find out how often the bbc updates the pls files.'''
 		self.logger.info("Getting BBC stations loaded")		# refresh periodically
 		subprocess.Popen("rm -f *.pls", shell=True)			# need the -f to force removal of unwritable files
@@ -137,4 +119,4 @@ if __name__ == "__main__":
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running bbcradio class as a standalone app")
 
 	myBBC = bbcradio()
-	myBBC.stationscanner()
+	myBBC._stationscanner()

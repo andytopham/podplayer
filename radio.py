@@ -1,5 +1,5 @@
 #!/usr/bin/python
-'''iRadio - internet radio.'''
+'''Podcast + internet radio player.'''
 import os
 import sys			# required for sys.exit()
 import time
@@ -12,9 +12,12 @@ import mpc2 as mpc			# my fourth module.
 import weather		# my fifth module.
 import timeout		# my timeout module
 import comms		# the remote control stuff.
+import system		# my disk usage
 import config		# the hardware and constants file
 
-def setupSockets():
+LOGFILE = '/home/pi/podplayer/log/radio.log'
+
+def _setup_sockets():
 	# Enable server and remote client
 	mySocket = comms.comms()
 	if config.master == True:
@@ -36,23 +39,26 @@ def setupSockets():
 	#	time.sleep(2)
 		listenconnection = mySocket.cmdlistener()
 			
-def radiostart(verbose):
+def _radio_start(verbose):
 	'''	The main routine for iRadio.'''
-	print "iRadio v",config.version
+	print "podplayer v",config.version
 	logging.info('******************')
-	logging.warning("iRadio v"+str(config.version))
+	logging.warning("podplayer v"+str(config.version))
 	logging.info("Setting time")
 	os.environ['TZ'] = 'Europe/London'
 	time.tzset
 	myGpio=gpio.gpio()
 	myOled = oled.oled()
-	myMpc = mpc.mpc()
+	myMpc = mpc.Mpc()
+	mySystem = system.System()
+	mySystem.disk_usage()
 	myTimeout = timeout.timeout(verbose)
 	station = 0
+	NEWTIMEOUTSTRING= 'STOP '
 	TIMEOUTSTRING = '               .  '
 	programmename = ""
 	
-	myOled.writerow(1,"iRadio v"+config.version+"      ")
+	myOled.writerow(1,"podplayer v"+config.version+"      ")
 	myWeather=weather.weather()
 	temperature = myWeather.wunder(config.key,config.locn)
 
@@ -61,7 +67,7 @@ def radiostart(verbose):
 	myOled.writerow(1,str(programmename))
 	myOled.updateoled(temperature, station)
 
-	logging.info("Starting main radio loop")
+	logging.info("Starting main podplayer loop")
 	
 	while True:
 		# regular events first
@@ -71,7 +77,6 @@ def radiostart(verbose):
 		# process the timeouts
 		t = myTimeout.checktimeouts()
 		if t == config.UPDATEOLED:
-#			myMpc.cleanoldpods()
 			programmename = myMpc.progname()
 			myOled.updateoled(temperature, station)		# this has to be here to update time
 		if t == config.UPDATETEMPERATURE:
@@ -79,6 +84,10 @@ def radiostart(verbose):
 			myOled.updateoled(temperature, station)
 		if t == config.UPDATESTATION:
 			myMpc.loadbbc()						# handles the bbc links going stale
+			if mySystem.disk_usage():
+				programmename = "Out of disk."
+				myOled.writerow(1,programmename)
+				sys.exit()
 		if t == config.AUDIOTIMEOUT:
 			programmename = TIMEOUTSTRING
 			myMpc.audioTimeout()
@@ -100,7 +109,7 @@ def radiostart(verbose):
 		elif button == config.BUTTONNEXT:
 			myOled.writerow(1,"<<Next>>        ")
 			station = myMpc.next()
-			if station == 0:
+			if station == -1:
 				programmename = "No pods left!"
 			else:
 				programmename = myMpc.progname()
@@ -110,7 +119,7 @@ def radiostart(verbose):
 #			myMpc.cleanoldpods()
 
 		elif button == config.BUTTONSTOP:
-			if myMpc.playing == 1:
+			if myMpc.playState == 1:
 				myOled.writerow(1,"<<Stopping>>      ")
 				myMpc.toggle()
 				programmename = myMpc.progname()
@@ -130,28 +139,29 @@ def radiostart(verbose):
 			
 if __name__ == "__main__":
 	'''	iradio main routine. Sets up the logging and constants, before calling radiostart.'''
-	parser = argparse.ArgumentParser( description='iradio - the BBC radio and podcast appliance. \
+	parser = argparse.ArgumentParser( description='podplayer - the BBC radio and podcast appliance. \
 	Use -v option when debugging.' )
 	parser.add_argument("-v", "--verbose", help="increase output - lots more logged in ./log/radio.log",
                     action="store_true")
 	args = parser.parse_args()
 	if args.verbose:
 		verbose = 1
-		logging.basicConfig(	filename='/home/pi/iradio/log/radio.log',
+		logging.basicConfig(	filename=LOGFILE,
 								filemode='w',
 								level=logging.DEBUG )
 	else:
 		verbose = 0
-		logging.basicConfig(	filename='/home/pi/iradio/log/radio.log',
+		logging.basicConfig(	filename=LOGFILE,
 								filemode='w',
 								level=logging.WARNING )
 	
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
+	logging.warning('*************************************')		# divider from last run
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running radio class as a standalone app")
 	logging.warning("Use -v command line option to increase logging.")
 
 	#Constants
 	logging.info("Running radio class as a standalone app")
-	radiostart(verbose)
+	_radio_start(verbose)
 	
 	
