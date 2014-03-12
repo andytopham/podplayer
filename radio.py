@@ -91,6 +91,7 @@ def _radio_start(verbose):
 		if t == config.AUDIOTIMEOUT:
 			programmename = TIMEOUTSTRING
 			myMpc.audioTimeout()
+			programmename = myMpc.progname()
 			myOled.writerow(1,programmename)
 		
 		# now process the button presses
@@ -119,14 +120,15 @@ def _radio_start(verbose):
 #			myMpc.cleanoldpods()
 
 		elif button == config.BUTTONSTOP:
-			if myMpc.playState == 1:
-				myOled.writerow(1,"<<Stopping>>      ")
-				myMpc.toggle()
-				programmename = myMpc.progname()
-			else:
-				myOled.writerow(1,"<<Starting>>      ")
-				myMpc.toggle()
-				programmename = myMpc.progname()
+#			if myMpc.playState == 1:
+#				myOled.writerow(1,"<<Stopping>>      ")
+			myMpc.toggle()
+			time.sleep(.5)
+			programmename = myMpc.progname()
+#			else:
+#				myOled.writerow(1,"<<Starting>>      ")
+#				myMpc.toggle()
+#				programmename = myMpc.progname()
 			audiostart = datetime.datetime.now()
 
 		elif button == config.BUTTONVOLUP:

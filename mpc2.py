@@ -116,15 +116,15 @@ class Mpc:
 		self.client.update()
 		return(0)
 				
-	def _stop(self):
+	def stop(self):
 		"""Send the stop signal to mpc."""
-		self.elapsedtime = self.elapsed()
-		self.logger.info("Stop at "+self.elapsedtime)
+#		self.elapsedtime = self.elapsed()
+		self.logger.info('Stop routine.')
 		try:
 			self.client.stop()
 		except:
 			self.logger.warning("Failed to send stop command.", exc_info=True)
-		self.playing = self.STOPPED				# argh! this has to be this late, or it resets elapsed to zero!!
+		self.playState = self.STOPPED				# argh! this has to be this late, or it resets elapsed to zero!!
 		return(0)
 		
 	def play(self):
@@ -195,11 +195,17 @@ class Mpc:
 	def toggle(self):
 		"""Toggle mpc mode between playing and stopped."""
 		if self.playState == self.PLAYING:
-			self.logger.debug("Toggle: stopping")
-			self.pause()
-		else:
-			self.logger.debug("Toggle: playing")
-			self.unpause()
+			self.logger.info("Toggle: stopping")
+			if self.podmode:
+				self.pause()
+			else:
+				self.stop()
+		else:			# stopped
+			self.logger.debug("Toggle: going to playing state")
+			if self.podmode:
+				self.unpause()
+			else:
+				self.play()
 		return(0)
 		
 	def _prev(self):
@@ -273,7 +279,10 @@ class Mpc:
 	def audioTimeout(self):	
 		if self.playState == self.PLAYING:
 			self.logger.warning("Audio timeout")
-			self.pause()
+			if self.podmode:
+				self.pause()
+			else:
+				self.stop()
 			return(0)
 		else:
 			return(0)
