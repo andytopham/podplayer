@@ -32,12 +32,13 @@ class Mpc:
 		self.playState = self.STOPPED		# playing or stopped
 		self.station = 0		# station number
 		self.podnumber = 0
-		self.podmode = 0
+		self.podmode = False 
 		self.podcount = 0
 		self.stale_links = 0
 		self.myBBC = bbcradio.bbcradio()
 		self.logger.info("Loaded station count:"+str(self.myBBC.load()))
 		self.updatedb()						# just run this occasionally
+		self.play()
 	
 	def updatedb(self):
 		'''Update the mpd db.'''
@@ -63,7 +64,7 @@ class Mpc:
 		
 	def loadbbc(self):
 		'''Call the BBCradio routine to load the stations.'''
-		if self.podmode == 0:		# only load the stations if we are in radio mode
+		if self.podmode == False:		# only load the stations if we are in radio mode
 			self.myBBC.load()
 			self.play()
 		else:
@@ -73,9 +74,9 @@ class Mpc:
 	def switchmode(self):
 		''' Toggle between radio and pod modes.'''
 		self.logger.info("Switching mode")
-		if self.podmode == 0:		# its radio mode now, so switch to pod mode
+		if self.podmode == False:		# its radio mode now, so switch to pod mode
 			self.logger.info("Going to pod mode, playing pod number "+str(self.podnumber))
-			self.podmode = 1
+			self.podmode = True
 			self.client.consume(1)
 			try:
 				self.client.clear()
@@ -88,13 +89,16 @@ class Mpc:
 					self.client.add(i)
 			except:
 				self.logger.warning("Failed to add list", exc_info=True)
-			self.podcounter()
-			self.client.play(1)
+			if self.podcounter() == 0:
+				print "No podcasts left, switching to radio."
+				self.switchmode()
+				return(0)
+			self.client.play(self.podnumber)
 			self.lastplayed = self.client.currentsong()
 			return(self.podnumber)
 		else:						# switch to radio mode
 			self.logger.info("Going to radio mode, playing station number "+str(self.station))
-			self.podmode = 0
+			self.podmode = False
 			self.client.consume = 0
 			self.client.clear()
 			self.loadbbc()
@@ -118,7 +122,6 @@ class Mpc:
 				
 	def stop(self):
 		"""Send the stop signal to mpc."""
-#		self.elapsedtime = self.elapsed()
 		self.logger.info('Stop routine.')
 		try:
 			self.client.stop()
@@ -130,7 +133,7 @@ class Mpc:
 	def play(self):
 		"""Send the play signal to mpc."""
 		self.logger.info("Play: setting play.")
-		if self.podmode == 0:
+		if self.podmode == False:
 			self.logger.info("Selected station: "+str(self.station))
 			try:
 				self.client.play(self.station)
@@ -148,10 +151,10 @@ class Mpc:
 	def pause(self):
 		"""Send the pause signal to mpc."""
 		self.logger.info("Pause.")
-		if self.podmode == 0:
-			self.logger.info("Selected station: "+str(self.station))
-		else:
+		if self.podmode:
 			self.logger.info("Selected pod: "+str(self.podnumber))
+		else:
+			self.logger.info("Selected station: "+str(self.station))
 		if self.client.status()['state'] == 'pause':
 			logging.error('mpd already paused.')
 			return(1)
@@ -165,10 +168,10 @@ class Mpc:
 	def unpause(self):
 		"""Send the unpause signal to mpc."""
 		self.logger.info("Unpause.")
-		if self.podmode == 0:
-			self.logger.info("Selected station: "+str(self.station))
-		else:
+		if self.podmode:
 			self.logger.info("Selected pod: "+str(self.podnumber))
+		else:
+			self.logger.info("Selected station: "+str(self.station))
 		if self.client.status()['state'] == 'play':
 			logging.error('mpd already playing.')
 			return(1)
@@ -215,7 +218,7 @@ class Mpc:
 		
 	def next(self):
 		"""Tell mpc to play the next item."""
-		if self.podmode == 1:
+		if self.podmode:
 			self.deleteFile()			# get rid of the one just moved from
 			self.podnumber += 1
 			self.logger.info("Next podcast: moving to "+str(self.podnumber)+" out of "+str(self.podcount))
@@ -238,7 +241,7 @@ class Mpc:
 			self.logger.info("Fetching mpd program name for stopped program")
 			return(self.STOPPEDPROGNAME)
 		else:
-			if self.podmode == 1:		# pod mode
+			if self.podmode:		# pod mode
 				self.logger.info("Fetching mpd pod name")
 				try:
 					p = self.client.currentsong()

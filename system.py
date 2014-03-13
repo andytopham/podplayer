@@ -13,6 +13,7 @@ class System:
 	'''Return state of OS stability'''
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
+		self.disk_usage()
 		
 	def disk_usage(self):
 #		p = subprocess.check_output(['sudo', 'du', '-h', '-d', '1'])

@@ -19,8 +19,9 @@ import time
 import logging
 import datetime
 import config
+import weather
 
-class oled:
+class Oled:
 	'''	Oled class. Routines for driving the serial oled. '''
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
@@ -35,7 +36,10 @@ class oled:
 		self.rowcount = config.rowcount
 		self.rowselect = [128,192,148,212]	# the addresses of the start of each row
 		self.start=0
+		self.myWeather = weather.weather()
 		self.initialise()
+		self.writerow(1, '')
+		self.update_row2(1)
 		
 	def initialise(self):
 		self.port.open()
@@ -43,7 +47,6 @@ class oled:
 		self.port.write(chr(254))		# cmd
 		self.port.write(chr(1))			# clear display
 		self.start = 0
-		time.sleep(.5)
 		self.writerow(3,"                    ")
 		self.writerow(4,"                    ")
 		return(0)
@@ -58,10 +61,14 @@ class oled:
 		self.port.write(chr(self.rowselect[row-1]))		# move to start of row
 		self.port.write(string[0:self.rowlength])
 	
-	def updateoled(self,temperature,station):
-		self.logger.info("Updateoled")
-#		self.writerow(2,time.strftime("%R")+"  "+str(station).rjust(2)+" {0:4.1f}".format(float(temperature))+"^C ")
-		self.writerow(2,time.strftime("%R")+"     {0:4.1f}".format(float(temperature))+"^C ")
+	def update_row2(self, t):
+		self.logger.info('Update row2')
+		if t:
+			self.temperature = self.myWeather.wunder(config.key, config.locn)
+		self.writerow(2,
+			time.strftime("%R")
+			+"     {0:4.1f}".format(float(self.temperature))
+			+"^C ")
 		return(0)
 		
 	def scroll(self,string):

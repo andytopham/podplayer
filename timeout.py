@@ -12,7 +12,7 @@ TEMPERATURETIMEOUT = 15
 STATIONTIMEOUT = 120
 AUDIOTIMEOUT = 30
 
-class timeout:
+class Timeout:
 	def __init__(self, verbose=0):
 		self.logger = logging.getLogger(__name__)
 		self.logger.info('Setting timeouts: verbose='+str(verbose))

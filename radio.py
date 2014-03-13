@@ -2,149 +2,103 @@
 '''Podcast + internet radio player.'''
 import os
 import sys			# required for sys.exit()
-import time
-import datetime
-import argparse
-import logging
-import oled			# my second module.
-import gpio			# my third module.
-import mpc2 as mpc			# my fourth module.
-import weather		# my fifth module.
-import timeout		# my timeout module
-import comms		# the remote control stuff.
-import system		# my disk usage
-import config		# the hardware and constants file
+import time, datetime
+import argparse, logging
+import oled, gpio, timeout, comms, system, config		# my modules.
+import mpc2 as mpc			# my updated module.
 
 LOGFILE = '/home/pi/podplayer/log/radio.log'
 
 def _setup_sockets():
+	'''For client/server operation. Not being used yet.'''
 	# Enable server and remote client
-	mySocket = comms.comms()
+	MySocket = comms.comms()
 	if config.master == True:
 		print "I am a server"
-		slave = mySocket.registerserversetup()
+		slave = MySocket.registerserversetup()
 		if slave != 0:
 			time.sleep(1)
 			# send the initial handshake message
-			mySocket.send2cmd(slave,"Msg from master.")
+			MySocket.send2cmd(slave,"Msg from master.")
 			# ready to send commands, but setup the link first...
-			mySocket.setupsender(slave)
+			MySocket.setupsender(slave)
 	else:
 		print "I am a client"
 		slave = 0
-		mySocket.registerclient(config.remote)
+		MySocket.registerclient(config.remote)
 		# now we are registered, just fetch the initial handshake message.
-		mySocket.setuplistener()
+		MySocket.setuplistener()
 		# now listen for real commands
 	#	time.sleep(2)
-		listenconnection = mySocket.cmdlistener()
+		MySocket.cmdlistener()
+
+def _process_timeouts(myOled, myMpc, mySystem, t):
+	'''Cases for each of the timeout types.'''
+	if t == config.UPDATEOLED:
+		myOled.update_row2(0)		# this has to be here to update time
+	if t == config.UPDATETEMPERATURE:
+		myOled.update_row2(1)
+	if t == config.UPDATESTATION:
+		myMpc.loadbbc()						# handles the bbc links going stale
+		if mySystem.disk_usage():
+			myOled.writerow(1, 'Out of disk.')
+			sys.exit()
+		else:
+			return('Reloaded stations')
+	if t == config.AUDIOTIMEOUT:
+		myMpc.audioTimeout()
+		return('Timeout')
+	return(myMpc.progname())
+
+def _process_button_presses(myMpc, button):
+	'''Cases for each of the button presses and return the new prog name.'''
+	if button == config.BUTTONMODE:
+		myMpc.switchmode()
+	elif button == config.BUTTONNEXT:
+		if myMpc.next() == -1:
+			return('No pods left!')
+	elif button == config.BUTTONSTOP:
+		myMpc.toggle()
+	elif button == config.BUTTONVOLUP:
+		myMpc.chgvol(+1)
+	elif button == config.BUTTONVOLDOWN:
+		myMpc.chgvol(-1)
+	return(myMpc.progname())
 			
-def _radio_start(verbose):
+def _radio_start(v=0):
 	'''	The main routine for iRadio.'''
-	print "podplayer v",config.version
+	print "podplayer v", config.version
 	logging.info('******************')
 	logging.warning("podplayer v"+str(config.version))
-	logging.info("Setting time")
-	os.environ['TZ'] = 'Europe/London'
-	time.tzset
 	myGpio=gpio.gpio()
-	myOled = oled.oled()
+	myOled = oled.Oled()
 	myMpc = mpc.Mpc()
 	mySystem = system.System()
-	mySystem.disk_usage()
-	myTimeout = timeout.timeout(verbose)
-	station = 0
-	NEWTIMEOUTSTRING= 'STOP '
-	TIMEOUTSTRING = '               .  '
-	programmename = ""
-	
-	myOled.writerow(1,"podplayer v"+config.version+"      ")
-	myWeather=weather.weather()
-	temperature = myWeather.wunder(config.key,config.locn)
-
-	myMpc.play()
+	myTimeout = timeout.Timeout(v)
+	myOled.writerow(1, "podplayer v"+config.version+"      ")
 	programmename = myMpc.progname()
-	myOled.writerow(1,str(programmename))
-	myOled.updateoled(temperature, station)
-
+	myOled.writerow(1, programmename)
 	logging.info("Starting main podplayer loop")
 	
 	while True:
 		# regular events first
 		time.sleep(.2)
 		myOled.scroll(programmename)
-		
-		# process the timeouts
-		t = myTimeout.checktimeouts()
-		if t == config.UPDATEOLED:
-			programmename = myMpc.progname()
-			myOled.updateoled(temperature, station)		# this has to be here to update time
-		if t == config.UPDATETEMPERATURE:
-			temperature = myWeather.wunder(config.key,config.locn)
-			myOled.updateoled(temperature, station)
-		if t == config.UPDATESTATION:
-			myMpc.loadbbc()						# handles the bbc links going stale
-			if mySystem.disk_usage():
-				programmename = "Out of disk."
-				myOled.writerow(1,programmename)
-				sys.exit()
-		if t == config.AUDIOTIMEOUT:
-			programmename = TIMEOUTSTRING
-			myMpc.audioTimeout()
-			programmename = myMpc.progname()
-			myOled.writerow(1,programmename)
-		
-		# now process the button presses
+		timeout_type = myTimeout.checktimeouts()
+		if timeout_type != 0:
+			programmename = _process_timeouts(myOled, myMpc, mySystem, timeout_type)
 		button = myGpio.processbuttons()
 		if button != 0:
 			myTimeout.resetAudioTimeout()
-		if button == config.BUTTONMODE:
-			myOled.writerow(1,"<<Mode change>> ")
-			station = myMpc.switchmode()
-			programmename = myMpc.progname()
-			myOled.writerow(1,programmename)
-			start = datetime.datetime.now()
-			audiostart = datetime.datetime.now()
-#			myMpc.cleanoldpods()
-
-		elif button == config.BUTTONNEXT:
-			myOled.writerow(1,"<<Next>>        ")
-			station = myMpc.next()
-			if station == -1:
-				programmename = "No pods left!"
-			else:
-				programmename = myMpc.progname()
-			myOled.writerow(1,programmename)
-			start = datetime.datetime.now()
-			audiostart = datetime.datetime.now()
-#			myMpc.cleanoldpods()
-
-		elif button == config.BUTTONSTOP:
-#			if myMpc.playState == 1:
-#				myOled.writerow(1,"<<Stopping>>      ")
-			myMpc.toggle()
-			time.sleep(.5)
-			programmename = myMpc.progname()
-#			else:
-#				myOled.writerow(1,"<<Starting>>      ")
-#				myMpc.toggle()
-#				programmename = myMpc.progname()
-			audiostart = datetime.datetime.now()
-
-		elif button == config.BUTTONVOLUP:
-			myMpc.chgvol(+1)
-			audiostart = datetime.datetime.now()
-
-		elif button == config.BUTTONVOLDOWN:
-			myMpc.chgvol(-1)
-			audiostart = datetime.datetime.now()
+			programmename = _process_button_presses(myMpc, button)
 			
 if __name__ == "__main__":
-	'''	iradio main routine. Sets up the logging and constants, before calling radiostart.'''
-	parser = argparse.ArgumentParser( description='podplayer - the BBC radio and podcast appliance. \
-	Use -v option when debugging.' )
-	parser.add_argument("-v", "--verbose", help="increase output - lots more logged in ./log/radio.log",
-                    action="store_true")
+	'''	iradio main routine. Set up logging before calling radiostart.'''
+	parser = argparse.ArgumentParser(
+			description='podplayer - the radio and podcast appliance.')
+	parser.add_argument("-v", "--verbose", 
+			help="increase output to log",
+			action="store_true")
 	args = parser.parse_args()
 	if args.verbose:
 		verbose = 1
@@ -157,9 +111,11 @@ if __name__ == "__main__":
 								filemode='w',
 								level=logging.WARNING )
 	
-#	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
-	logging.warning('*************************************')		# divider from last run
-	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running radio class as a standalone app")
+#	Default level is warning, level=logging.INFO log lots, 
+#		level=logging.DEBUG log everything
+	logging.warning('*********************************')
+	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')
+			+". Running radio class as a standalone app")
 	logging.warning("Use -v command line option to increase logging.")
 
 	#Constants
