@@ -4,10 +4,10 @@ import os
 import sys			# required for sys.exit()
 import time, datetime
 import argparse, logging
-import oled, gpio, timeout, comms, system, config		# my modules.
-import mpc2 as mpc			# my updated module.
+import gpio
 
 LOGFILE = '/home/pi/podplayer/log/radio.log'
+VERSION = '3.9'
 
 def _setup_sockets():
 	'''For client/server operation. Not being used yet.'''
@@ -31,66 +31,16 @@ def _setup_sockets():
 		# now listen for real commands
 	#	time.sleep(2)
 		MySocket.cmdlistener()
-
-def _process_timeouts(myOled, myMpc, mySystem, t):
-	'''Cases for each of the timeout types.'''
-	if t == config.UPDATEOLED:
-		myOled.update_row2(0)		# this has to be here to update time
-	if t == config.UPDATETEMPERATURE:
-		myOled.update_row2(1)
-	if t == config.UPDATESTATION:
-		myMpc.loadbbc()						# handles the bbc links going stale
-		if mySystem.disk_usage():
-			myOled.writerow(1, 'Out of disk.')
-			sys.exit()
-		else:
-			return('Reloaded stations')
-	if t == config.AUDIOTIMEOUT:
-		myMpc.audioTimeout()
-		return('Timeout')
-	return(myMpc.progname())
-
-def _process_button_presses(myMpc, button):
-	'''Cases for each of the button presses and return the new prog name.'''
-	if button == config.BUTTONMODE:
-		myMpc.switchmode()
-	elif button == config.BUTTONNEXT:
-		if myMpc.next() == -1:
-			return('No pods left!')
-	elif button == config.BUTTONSTOP:
-		myMpc.toggle()
-	elif button == config.BUTTONVOLUP:
-		myMpc.chgvol(+1)
-	elif button == config.BUTTONVOLDOWN:
-		myMpc.chgvol(-1)
-	return(myMpc.progname())
 			
 def _radio_start(v=0):
 	'''	The main routine for iRadio.'''
-	print "podplayer v", config.version
+	print "podplayer v", VERSION
 	logging.info('******************')
-	logging.warning("podplayer v"+str(config.version))
+	logging.warning("podplayer v"+VERSION)
 	myGpio=gpio.gpio()
-	myOled = oled.Oled()
-	myMpc = mpc.Mpc()
-	mySystem = system.System()
-	myTimeout = timeout.Timeout(v)
-	myOled.writerow(1, "podplayer v"+config.version+"      ")
-	programmename = myMpc.progname()
-	myOled.writerow(1, programmename)
+	myGpio.startup(v)
 	logging.info("Starting main podplayer loop")
-	
-	while True:
-		# regular events first
-		time.sleep(.2)
-		myOled.scroll(programmename)
-		timeout_type = myTimeout.checktimeouts()
-		if timeout_type != 0:
-			programmename = _process_timeouts(myOled, myMpc, mySystem, timeout_type)
-		button = myGpio.processbuttons()
-		if button != 0:
-			myTimeout.resetAudioTimeout()
-			programmename = _process_button_presses(myMpc, button)
+	myGpio.master_loop()
 			
 if __name__ == "__main__":
 	'''	iradio main routine. Set up logging before calling radiostart.'''

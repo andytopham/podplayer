@@ -27,7 +27,7 @@ import RPi.GPIO as GPIO
 import time
 import datetime
 import logging
-import config
+import config, timeout, oled, mpc2 as mpc, system
 
 class gpio:
 	'''A class containing ways to handle the RPi gpio. '''
@@ -50,7 +50,65 @@ class gpio:
 		self.pod = 0
 		self.setup()
 		self.setupcallbacks()
+		self.myOled = oled.Oled()
+		self.myMpc = mpc.Mpc()
+		self.mySystem = system.System()
+
+	def startup(self, verbosity):
+		self.myTimeout = timeout.Timeout(verbosity)
+		self.myOled.writerow(1, "podplayer v"+config.version+"      ")
+		self.programmename = self.myMpc.progname()
+	
+	def master_loop(self):
+		while True:
+			# regular events first
+			time.sleep(.2)
+			self.myOled.scroll(self.programmename)
+			self.process_timeouts()
+			self.process_button_presses()
 		
+	def process_timeouts(self):
+		'''Cases for each of the timeout types.'''
+		timeout_type = self.myTimeout.checktimeouts()
+		if timeout_type == 0:
+			return(0)
+		if timeout_type == config.UPDATEOLED:
+			self.myOled.update_row2(0)		# this has to be here to update time
+		if timeout_type == config.UPDATETEMPERATURE:
+			self.myOled.update_row2(1)
+		if timeout_type == config.UPDATESTATION:
+			self.myMpc.loadbbc()						# handles the bbc links going stale
+			if self.mySystem.disk_usage():
+				self.myOled.writerow(1, 'Out of disk.')
+				sys.exit()
+			else:
+				return(0)
+		if timeout_type == config.AUDIOTIMEOUT:
+			self.myMpc.audioTimeout()
+			self.programmename = 'Timeout'
+		return(0)
+
+	def process_button_presses(self):
+		'''Cases for each of the button presses and return the new prog name.'''
+		button = self.processbuttons()
+		if button == 0:
+			return(0)
+		else:
+			self.myTimeout.resetAudioTimeout()
+			if button == config.BUTTONMODE:
+				self.myMpc.switchmode()
+			elif button == config.BUTTONNEXT:
+				if self.myMpc.next() == -1:
+					return('No pods left!')
+			elif button == config.BUTTONSTOP:
+				self.myMpc.toggle()
+			elif button == config.BUTTONVOLUP:
+				self.myMpc.chgvol(+1)
+			elif button == config.BUTTONVOLDOWN:
+				self.myMpc.chgvol(-1)
+			self.programmename = self.myMpc.progname()
+			return(0)
+	
 	def setup(self):
 		self.logger.debug("def gpio setup")
 		self.logger.info("RPi board revision:"+str(GPIO.RPI_REVISION)+". RPi.GPIO revision:"+str(GPIO.VERSION)+".  ")
