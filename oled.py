@@ -11,19 +11,16 @@
   To get rid of the garbage from the pi bootup...
   edit /boot/cmdline.txt and remove both references to ...ttyAMA0...
   Brightness control: http://www.picaxeforum.co.uk/entry.php?49-Winstar-OLED-Brightness-Control
-  
 '''
 import serial
-import subprocess
-import time
-import logging
-import datetime
+import subprocess, time, logging, datetime
 import config
-import weather
+
+LOGFILE = 'log/oled.log'
 
 class Oled:
 	'''	Oled class. Routines for driving the serial oled. '''
-	def __init__(self):
+	def __init__(self, rows = 2):
 		self.logger = logging.getLogger(__name__)
 		self.port = serial.Serial(
 			port='/dev/ttyAMA0', 
@@ -32,23 +29,27 @@ class Oled:
 			parity=serial.PARITY_NONE,
 			stopbits=serial.STOPBITS_TWO)	# Note - not just one stop bit
 		#constants
-		self.rowlength = config.rowlength
-		self.rowcount = config.rowcount
+		self.rowcount = rows
+		if rows == 2:
+			self.rowlength = 16
+		else:
+			self.rowlength = 20
+#		self.rowlength = config.rowlength
+#		self.rowcount = config.rowcount
 		self.rowselect = [128,192,148,212]	# the addresses of the start of each row
 		self.start=0
-		self.myWeather = weather.weather()
 		self.initialise()
-		self.writerow(1, '')
-		self.update_row2(1)
-		
+	
 	def initialise(self):
 		self.port.open()
 		self.logger.info("Opened serial port")
 		self.port.write(chr(254))		# cmd
 		self.port.write(chr(1))			# clear display
 		self.start = 0
-		self.writerow(3,"                    ")
-		self.writerow(4,"                    ")
+		self.writerow(1, '')
+		self.writerow(2, '')
+		self.writerow(3,'                    ')
+		self.writerow(4,'                    ')
 		return(0)
 	
 	def cleardisplay(self):
@@ -58,25 +59,15 @@ class Oled:
 
 	def writerow(self,row,string):
 		self.port.write(chr(254))		# cmd
-		self.port.write(chr(self.rowselect[row-1]))		# move to start of row
+		self.port.write(chr(self.rowselect[row-1]))	# move to start of row
 		self.port.write(string[0:self.rowlength])
-	
-	def update_row2(self, t):
-		self.logger.info('Update row2')
-		if t:
-			self.temperature = self.myWeather.wunder(config.key, config.locn)
-		self.writerow(2,
-			time.strftime("%R")
-			+"     {0:4.1f}".format(float(self.temperature))
-			+"^C ")
-		return(0)
 		
 	def scroll(self,string):
 		pauseCycles=5
 		self.start += 1
-		if self.start > len(string):		# finished scrolling this string, reset.
+		if self.start > len(string):	# finished scrolling this string, reset.
 			self.start = 0
-		if self.start < pauseCycles:				# only start scrolling after 8 cycles.
+		if self.start < pauseCycles:	# only start scrolling after 8 cycles.
 			startpoint=0
 		else:
 			startpoint = self.start-pauseCycles
@@ -110,7 +101,7 @@ class Oled:
 			
 if __name__ == "__main__":
 	print "Running oled class as a standalone app"
-	logging.basicConfig(filename='log/oled.log',
+	logging.basicConfig(filename= LOGFILE,
 						filemode='w',
 						level=logging.INFO)	#filemode means that we do not append anymore
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything

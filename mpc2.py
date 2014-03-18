@@ -7,7 +7,7 @@ import subprocess
 import requests
 import os
 from bs4 import BeautifulSoup
-import bbcradio
+from bbcradio import BBCradio
 from mpd import MPDClient
 
 class Mpc:
@@ -35,7 +35,7 @@ class Mpc:
 		self.podmode = False 
 		self.podcount = 0
 		self.stale_links = 0
-		self.myBBC = bbcradio.bbcradio()
+		self.myBBC = BBCradio()
 		self.logger.info("Loaded station count:"+str(self.myBBC.load()))
 		self.updatedb()						# just run this occasionally
 		self.play()
@@ -127,7 +127,14 @@ class Mpc:
 			self.client.stop()
 		except:
 			self.logger.warning("Failed to send stop command.", exc_info=True)
-		self.playState = self.STOPPED				# argh! this has to be this late, or it resets elapsed to zero!!
+			time.sleep(1)
+			self.logger.warning("Trying again.....")
+			try:
+				self.client.stop()
+			except:
+				self.logger.warning("Failed to send stop command again.", exc_info=True)
+				return(1)
+		self.playState = self.STOPPED		# argh! this has to be this late, or it resets elapsed to zero!!
 		return(0)
 		
 	def play(self):

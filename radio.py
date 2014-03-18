@@ -4,7 +4,7 @@ import os
 import sys			# required for sys.exit()
 import time, datetime
 import argparse, logging
-import gpio
+from gpio import Gpio
 
 LOGFILE = '/home/pi/podplayer/log/radio.log'
 VERSION = '3.9'
@@ -37,7 +37,7 @@ def _radio_start(v=0):
 	print "podplayer v", VERSION
 	logging.info('******************')
 	logging.warning("podplayer v"+VERSION)
-	myGpio=gpio.gpio()
+	myGpio=Gpio()
 	myGpio.startup(v)
 	logging.info("Starting main podplayer loop")
 	myGpio.master_loop()

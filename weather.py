@@ -1,10 +1,5 @@
 #!/usr/bin/python
-''' 
-  Module to fetch weather information from the web.
-  Imported by iradio.
-  Methods:
- 	
-'''
+''' Fetch weather information from wunder.'''
 import requests
 from bs4 import BeautifulSoup
 import urllib2
@@ -12,7 +7,7 @@ import json
 import logging
 import datetime
 
-class weather:
+class Weather:
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
 		temperature = 0

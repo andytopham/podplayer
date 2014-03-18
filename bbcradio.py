@@ -8,7 +8,7 @@ import datetime
 import requests
 from bs4 import BeautifulSoup
 
-class bbcradio:
+class BBCradio:
 	# These are the indicies to the url array.
 	URLID = 0
 	URLSTREAM = 1

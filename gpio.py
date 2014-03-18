@@ -26,10 +26,12 @@
 import RPi.GPIO as GPIO
 import time
 import datetime
-import logging
-import config, timeout, oled, mpc2 as mpc, system
+import logging, subprocess
+import config, timeout, infodisplay
+from mpc2 import Mpc
+from system import System
 
-class gpio:
+class Gpio:
 	'''A class containing ways to handle the RPi gpio. '''
 	def __init__(self):
 		'''Initialise GPIO ports. '''
@@ -50,20 +52,20 @@ class gpio:
 		self.pod = 0
 		self.setup()
 		self.setupcallbacks()
-		self.myOled = oled.Oled()
-		self.myMpc = mpc.Mpc()
-		self.mySystem = system.System()
+		self.myInfoDisplay = infodisplay.InfoDisplay()
+		self.myMpc = Mpc()
+		self.mySystem = System()
 
 	def startup(self, verbosity):
 		self.myTimeout = timeout.Timeout(verbosity)
-		self.myOled.writerow(1, "podplayer v"+config.version+"      ")
+		self.myInfoDisplay.writerow(1, "podplayer v"+config.version+"      ")
 		self.programmename = self.myMpc.progname()
 	
 	def master_loop(self):
 		while True:
 			# regular events first
 			time.sleep(.2)
-			self.myOled.scroll(self.programmename)
+			self.myInfoDisplay.scroll(self.programmename)
 			self.process_timeouts()
 			self.process_button_presses()
 		
@@ -73,13 +75,13 @@ class gpio:
 		if timeout_type == 0:
 			return(0)
 		if timeout_type == config.UPDATEOLED:
-			self.myOled.update_row2(0)		# this has to be here to update time
+			self.myInfoDisplay.update_row2(0)		# this has to be here to update time
 		if timeout_type == config.UPDATETEMPERATURE:
-			self.myOled.update_row2(1)
+			self.myInfoDisplay.update_row2(1)
 		if timeout_type == config.UPDATESTATION:
 			self.myMpc.loadbbc()						# handles the bbc links going stale
 			if self.mySystem.disk_usage():
-				self.myOled.writerow(1, 'Out of disk.')
+				self.myInfoDisplay.writerow(1, 'Out of disk.')
 				sys.exit()
 			else:
 				return(0)
@@ -102,6 +104,8 @@ class gpio:
 					return('No pods left!')
 			elif button == config.BUTTONSTOP:
 				self.myMpc.toggle()
+			elif button == config.BUTTONREBOOT:
+				p = subprocess.call(['reboot'])
 			elif button == config.BUTTONVOLUP:
 				self.myMpc.chgvol(+1)
 			elif button == config.BUTTONVOLDOWN:
@@ -229,6 +233,16 @@ class gpio:
 			self.pod = 1
 			return(1)
 		return(0)
+
+	def is_stop_held_down(self,delay):
+		''' Call this after a delay after detecting the stop button is pressed.
+			If the button is still pressed, then return 1. '''
+		time.sleep(delay)
+		in18 = GPIO.input(self.NEXTSW)
+		if in18 == self.PRESSED:
+			self.reboot = 1
+			return(1)
+		return(0)
 		
 	def processbuttons(self):
 		'''Called by the main program. Expects callback processes to have
@@ -245,9 +259,14 @@ class gpio:
 				self.next = 0							# clear down the button press
 				button = config.BUTTONMODE			
 		if self.stop == 1:
-			self.logger.info("Button pressed stop")
-			self.stop = 0
-			button = config.BUTTONSTOP
+			if self.is_stop_held_down(1) == 0:
+				self.logger.info("Button pressed stop")
+				self.stop = 0
+				button = config.BUTTONSTOP
+			else:								# button still held down
+				self.logger.warning("Button pressed reboot")
+				self.next = 0							# clear down the button press
+				button = config.BUTTONREBOOT
 		if self.vol == 1:
 			self.logger.info("Button pressed vol up")
 			self.vol=0
