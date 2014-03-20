@@ -331,11 +331,13 @@ class Gpio:
 				GPIO.output(a[i], GPIO.LOW)
 				
 	def scan(self):
+		'''Test routine to show current status of each gpio line.'''
 		a = [17,18,21,22,23,24,25,4]
 		for i in range(len(a)):
 			GPIO.setup(a[i],GPIO.IN)
 			print a[i]," ",
 		print
+		print 'Next Stop Vol+ Vol- -    -    -    -'
 		while True:
 			for i in range(len(a)):
 				print GPIO.input(a[i]),"  ",
@@ -349,7 +351,7 @@ if __name__ == "__main__":
 						level=logging.WARNING)	#filemode means that we do not append anymore
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running gpio class as a standalone app")
-	myGpio = gpio()
+	myGpio = Gpio()
 	myGpio.setup()
 	myGpio.scan()
 	myGpio.checkforstuckswitches()

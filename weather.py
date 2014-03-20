@@ -34,7 +34,7 @@ class Weather:
 
 	def wunder(self,key,locn):
 		self.logger.debug("Fetching wunder temperature")
-		f = urllib2.urlopen('http://api.wunderground.com/api/'+key+'/conditions/q/'+locn)
+		f = urllib2.urlopen('http://api.wunderground.com/api/'+key+'/conditions/q/'+locn+'.json')
 		json_string = f.read()
 		parsed_json = json.loads(json_string)
 		#location = parsed_json['location']['city']

@@ -1,6 +1,5 @@
 #!/bin/sh
-echo "radio installer"
-echo
+echo "** radio installer **"
 echo "apt-get update"
 apt-get update
 echo
@@ -10,33 +9,28 @@ echo
 echo "apt-get -y install python-pip"
 apt-get -y install python-pip
 echo
-echo "pip install beautifulsoup4"
-pip install beautifulsoup4
-echo
-echo "pip install requests"
-pip install requests
-echo
-echo"pip install python-mpd2"
-pip install python-mpd2
-echo
-echo "pip install logging"
-pip install logging
+echo 'pip installs...'
+pip install beautifulsoup4 requests python-mpd2 logging feedparser urllib3
 echo
 echo "apt-get -y install python-serial"
-apt-get -y install python-serial
-echo
-echo "install feedparser"
-pip install feedparser
-pip install urllib3
-echo
-echo "apt-get -y install mpd mpc"	
-apt-get -y install mpd mpc	
-mkdir log
+apt-get -y install python-serial mpd mpc	
 cp mpd.conf /etc
 cp startradio /etc/init.d
 chmod 755 /etc/init.d/startradio
 update-rc.d startradio defaults
-echo "You still need to update the keys in the config.py file"
-echo "You still need to edit /boot/cmdline.txt to remove the refs to AMA0"
-echo "You still need to edit /etc/mpd.conf to change the bind_to_address to any"
+cp sampleconfig.py config.py
 echo
+echo 'Setting up wifi'
+cp /etc/network/interfaces /etc/network/interfaces.bak
+cp interfaces /etc/network
+echo 'Fixing serial garbage.'
+cp /boot/cmdline.txt /boot/cmdline.bak
+cp cmdline.txt /boot
+echo
+chmod +x radio.py
+mkdir log
+echo '*************************'
+echo 'You still need to:'
+echo '1. update the keys in the config.py file'
+echo '2. update the ip address and wifi key in /etc/network/interfaces.'
+
