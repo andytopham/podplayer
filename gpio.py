@@ -1,6 +1,5 @@
 #!/usr/bin/python
-''' 
-	Module to control the gpio switches.
+''' Module to control the gpio switches.
 	Imported by iradio.
 	Will poll switches in a loop if called standalone.
 	Slice of Pi pinout:
@@ -17,19 +16,30 @@
 		sudo apt-get update
 		sudo apt-get dist-upgrade
 		sudo apt-get install python-rpi.gpio python3-rpi.gpio
-		Not the following...
-		wget https://raspberry-gpio-python.googlecode.com/files/RPi.GPIO-0.5.2a.tar.gz
-		tar zxf RPi.GPIO-0.5.2a.tar.gz
-		cd RPi.GPIO-0.5.2a
-		sudo python setup.py install
 '''
 import RPi.GPIO as GPIO
-import time
-import datetime
+import time, datetime
 import logging, subprocess
-import config, timeout, infodisplay
+import timeout, infodisplay
 from mpc2 import Mpc
 from system import System
+
+NEXTSW = 17
+STOPSW = 18
+VOLUP = 21
+VOLDOWN = 22
+BUTTONNONE = 0
+BUTTONNEXT = 1
+BUTTONSTOP = 2
+BUTTONVOLUP = 3
+BUTTONVOLDOWN = 4
+BUTTONMODE = 5
+BUTTONREBOOT = 6
+UPDATEOLED = 1
+UPDATETEMPERATURE = 2
+UPDATESTATION = 3
+AUDIOTIMEOUT = 4
+PRESSED = False
 
 class Gpio:
 	'''A class containing ways to handle the RPi gpio. '''
@@ -38,13 +48,13 @@ class Gpio:
 		self.logger = logging.getLogger(__name__)
 		self.logger.info("Starting gpio class")
 		#start with some constants
-		self.NEXTSW = 17
-		self.STOPSW = 18
-		self.VOLUP = 21
-		self.VOLDOWN = 22
-		self.YELLOWLED = 23					# temporary hack from 22
-		self.REDLED = 24
-		self.PRESSED = config.PRESSED			# True for small box, False for metal box
+#		self.NEXTSW = 17
+#		self.STOPSW = 18
+#		self.VOLUP = 21
+#		self.VOLDOWN = 22
+#		self.YELLOWLED = 23					# temporary hack from 22
+#		self.REDLED = 24
+#		self.PRESSED = config.PRESSED		# True for small box, False for metal box
 		#then initialise the variables
 		self.next = 0
 		self.stop = 0
@@ -58,7 +68,6 @@ class Gpio:
 
 	def startup(self, verbosity):
 		self.myTimeout = timeout.Timeout(verbosity)
-		self.myInfoDisplay.writerow(1, "podplayer v"+config.version+"      ")
 		self.programmename = self.myMpc.progname()
 	
 	def master_loop(self):
@@ -67,25 +76,27 @@ class Gpio:
 			time.sleep(.2)
 			self.myInfoDisplay.scroll(self.programmename)
 			self.process_timeouts()
-			self.process_button_presses()
-		
+			r = self.process_button_presses()
+			if r == 1:
+				return(1)
+				
 	def process_timeouts(self):
 		'''Cases for each of the timeout types.'''
 		timeout_type = self.myTimeout.checktimeouts()
 		if timeout_type == 0:
 			return(0)
-		if timeout_type == config.UPDATEOLED:
+		if timeout_type == UPDATEOLED:
 			self.myInfoDisplay.update_row2(0)		# this has to be here to update time
-		if timeout_type == config.UPDATETEMPERATURE:
+		if timeout_type == UPDATETEMPERATURE:
 			self.myInfoDisplay.update_row2(1)
-		if timeout_type == config.UPDATESTATION:
+		if timeout_type == UPDATESTATION:
 			self.myMpc.loadbbc()						# handles the bbc links going stale
 			if self.mySystem.disk_usage():
 				self.myInfoDisplay.writerow(1, 'Out of disk.')
 				sys.exit()
 			else:
 				return(0)
-		if timeout_type == config.AUDIOTIMEOUT:
+		if timeout_type == AUDIOTIMEOUT:
 			self.myMpc.audioTimeout()
 			self.programmename = 'Timeout'
 		return(0)
@@ -97,18 +108,22 @@ class Gpio:
 			return(0)
 		else:
 			self.myTimeout.resetAudioTimeout()
-			if button == config.BUTTONMODE:
+			if button == BUTTONMODE:
 				self.myMpc.switchmode()
-			elif button == config.BUTTONNEXT:
+			elif button == BUTTONNEXT:
 				if self.myMpc.next() == -1:
 					return('No pods left!')
-			elif button == config.BUTTONSTOP:
+			elif button == BUTTONSTOP:
 				self.myMpc.toggle()
-			elif button == config.BUTTONREBOOT:
+			elif button == BUTTONREBOOT:
+				print 'Rebooting...'
+				self.myInfoDisplay.writerow(1, 'Rebooting...     ')
+				time.sleep(2)
 				p = subprocess.call(['reboot'])
-			elif button == config.BUTTONVOLUP:
+				return(1)
+			elif button == BUTTONVOLUP:
 				self.myMpc.chgvol(+1)
-			elif button == config.BUTTONVOLDOWN:
+			elif button == BUTTONVOLDOWN:
 				self.myMpc.chgvol(-1)
 			self.programmename = self.myMpc.progname()
 			return(0)
@@ -119,34 +134,15 @@ class Gpio:
 		# use P1 header pin numbering convention
 		GPIO.setmode(GPIO.BCM)
 		GPIO.setwarnings(False)
-		#Fetch hw signature
-		GPIO.setup(self.REDLED, GPIO.IN)		# temporary, normally output
-		GPIO.setup(self.YELLOWLED, GPIO.IN)		# temporary, normally output
 		a = [17,18,21,22,23,24,25,4]
 		j = [0,0,0,0,0,0,0,0]
 		for i in range(len(a)):
 			GPIO.setup(a[i],GPIO.IN)
-		for i in range(len(a)):
-			j[i] = GPIO.input(a[i])
-		if j[0] and j[1]:
-			self.logger.info("HW type: partial")
-			device = config.PARTIAL
-		elif j[3]:
-			self.logger.info("HW type: Humble")
-			device = config.HUMBLE
-		else:
-			self.logger.info("HW type: full")
-			device = config.FULL
-		# Set up the GPIO channels - one input and one output
-		GPIO.setup(self.NEXTSW, GPIO.IN)
-		GPIO.setup(self.STOPSW, GPIO.IN)
-		GPIO.setup(self.VOLUP, GPIO.IN)
-		GPIO.setup(self.VOLDOWN, GPIO.IN)
-		GPIO.setup(self.YELLOWLED, GPIO.OUT)		#yellow led
-		GPIO.setup(self.REDLED, GPIO.OUT)		# red led
-		GPIO.output(self.YELLOWLED, GPIO.HIGH)	# turn it off
-		GPIO.output(self.REDLED, GPIO.LOW)	# turn it on
-		return(device)
+		GPIO.setup(NEXTSW, GPIO.IN)
+		GPIO.setup(STOPSW, GPIO.IN)
+		GPIO.setup(VOLUP, GPIO.IN)
+		GPIO.setup(VOLDOWN, GPIO.IN)
+		return()
 
 	def pressednext(self,channel):
 		'''Minimally manage the callback that is triggered when the Next button is pressed.'''
@@ -156,7 +152,7 @@ class Gpio:
 		
 	def pressedstop(self,channel):
 		'''Minimally manage the callback that is triggered when the Stop button is pressed.'''
-#		self.logger.info("Button pressed stop, Channel:"+str(channel))
+		self.logger.info("Button pressed stop, Channel:"+str(channel))
 		self.stop = 1
 		return(0)
 
@@ -178,22 +174,22 @@ class Gpio:
 		for button presses. Callbacks are run in a parallel process.'''
 		self.logger.info("Using callbacks")
 		BOUNCETIME=100
-		if self.PRESSED == True:
-			GPIO.add_event_detect(self.NEXTSW, GPIO.RISING, callback=self.pressednext, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(self.STOPSW, GPIO.RISING, callback=self.pressedstop, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(self.VOLUP, GPIO.RISING, callback=self.pressedvolup, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(self.VOLDOWN, GPIO.RISING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)
+		if PRESSED == True:
+			GPIO.add_event_detect(NEXTSW, GPIO.RISING, callback=self.pressednext, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(STOPSW, GPIO.RISING, callback=self.pressedstop, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(VOLUP, GPIO.RISING, callback=self.pressedvolup, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(VOLDOWN, GPIO.RISING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)
 		else:
-			GPIO.add_event_detect(self.NEXTSW, GPIO.FALLING, callback=self.pressednext, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(self.STOPSW, GPIO.FALLING, callback=self.pressedstop, bouncetime=BOUNCETIME)	
-			GPIO.add_event_detect(self.VOLUP, GPIO.FALLING, callback=self.pressedvolup, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(self.VOLDOWN, GPIO.FALLING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)	
+			GPIO.add_event_detect(NEXTSW, GPIO.FALLING, callback=self.pressednext, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(STOPSW, GPIO.FALLING, callback=self.pressedstop, bouncetime=BOUNCETIME)	
+			GPIO.add_event_detect(VOLUP, GPIO.FALLING, callback=self.pressedvolup, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(VOLDOWN, GPIO.FALLING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)	
 		
 	def checkforstuckswitches(self):
 		'''Run at power on to check that the switches are not stuck in one state.
 			If this fails, then the calling program needs to exit.'''
 		self.logger.debug("def gpio checkforstuckswitches")
-		in17 = GPIO.input(self.NEXTSW)
+		in17 = GPIO.input(NEXTSW)
 		if in17 == self.PRESSED:
 			self.logger.debug("pressed next sw")
 			stuck = 1
@@ -201,7 +197,7 @@ class Gpio:
 			sofar = datetime.datetime.now()
 			while sofar-start < datetime.timedelta(seconds=2):	# chk for 2 seconds
 				sofar = datetime.datetime.now()
-				in17 = GPIO.input(self.NEXTSW)
+				in17 = GPIO.input(NEXTSW)
 				if in17 != self.PRESSED:
 					stuck = 0
 			if stuck == 1:
@@ -228,8 +224,8 @@ class Gpio:
 		''' Call this after a delay after detecting the next button is pressed.
 			If the button is still pressed, then return 1. '''
 		time.sleep(delay)
-		in17 = GPIO.input(self.NEXTSW)
-		if in17 == self.PRESSED:
+		in17 = GPIO.input(NEXTSW)
+		if in17 == PRESSED:
 			self.pod = 1
 			return(1)
 		return(0)
@@ -238,8 +234,8 @@ class Gpio:
 		''' Call this after a delay after detecting the stop button is pressed.
 			If the button is still pressed, then return 1. '''
 		time.sleep(delay)
-		in18 = GPIO.input(self.NEXTSW)
-		if in18 == self.PRESSED:
+		in18 = GPIO.input(STOPSW)
+		if in18 == PRESSED:
 			self.reboot = 1
 			return(1)
 		return(0)
@@ -253,28 +249,28 @@ class Gpio:
 			if self.isnexthelddown(.3) == 0:
 				self.logger.info("Button pressed next")
 				self.next = 0
-				button = config.BUTTONNEXT
+				button = BUTTONNEXT
 			else:								# button still held down
 				self.logger.info("Button pressed mode")
-				self.next = 0							# clear down the button press
-				button = config.BUTTONMODE			
+				self.next = 0					# clear down the button press
+				button = BUTTONMODE			
 		if self.stop == 1:
 			if self.is_stop_held_down(1) == 0:
 				self.logger.info("Button pressed stop")
 				self.stop = 0
-				button = config.BUTTONSTOP
+				button = BUTTONSTOP
 			else:								# button still held down
 				self.logger.warning("Button pressed reboot")
-				self.next = 0							# clear down the button press
-				button = config.BUTTONREBOOT
+				self.stop = 0					# clear down the button press
+				button = BUTTONREBOOT
 		if self.vol == 1:
 			self.logger.info("Button pressed vol up")
 			self.vol=0
-			button = config.BUTTONVOLUP
+			button = BUTTONVOLUP
 		if self.vol == -1:
 			self.logger.info("Button pressed vol down")
 			self.vol=0
-			button = config.BUTTONVOLDOWN
+			button = BUTTONVOLDOWN
 		return(button)
 
 	def stopled(self,state):
@@ -297,21 +293,7 @@ class Gpio:
 		'''Not currently called. Should be called to tidily shutdown the gpio. '''
 		# frees up the ports for another prog to use without warnings.
 		GPIO.cleanup()
-		
-	def test(self):
-		'''Test routine. Loops and shows the status of the inputs and toggles outputs. '''
-		print "Infinite loop:- press button to turn on led"
-		self.logger.debug("def gpio test")
-		while True:
-			if GPIO.input(self.NEXTSW) == 1:
-				GPIO.output(myGpio.YELLOWLED, GPIO.HIGH)
-			else:
-				GPIO.output(myGpio.YELLOWLED, GPIO.LOW)
-			if GPIO.input(self.STOPSW) == 1:
-				GPIO.output(myGpio.REDLED, GPIO.HIGH)
-			else:
-				GPIO.output(myGpio.REDLED, GPIO.LOW)
-			
+					
 	def sequenceleds(self):
 		'''Alternative test routine to be used with the clock3 slice of pi.'''
 		self.logger.debug("def gpio sequenceleds")
