@@ -8,7 +8,8 @@ import requests
 import os
 from bs4 import BeautifulSoup
 from bbcradio import BBCradio
-from mpd import MPDClient
+import mpd
+# from mpd import MPDClient
 
 class Mpc:
 	'''Class: mpc - using native python. Uses bbcradio class.'''
@@ -23,23 +24,42 @@ class Mpc:
 	
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
-		self.client = MPDClient()
+		self.playState = self.STOPPED		# playing or stopped
+		self.station = 0					# station number
+		self.podnumber = 0
+		self.podmode = False 
+		self.podcount = 0
+		self.stale_links = 0
+		self. logger.info('Starting mpd client.')
+		self.client = mpd.MPDClient()
 		self.client.timeout = 10 # seconds
 		self.client.idletimeout = None
 		self.client.connect("localhost", 6600)
 		self.client.clear()
 		self.logger.info("python-mpd2 version:"+self.client.mpd_version)
-		self.playState = self.STOPPED		# playing or stopped
-		self.station = 0		# station number
-		self.podnumber = 0
-		self.podmode = False 
-		self.podcount = 0
-		self.stale_links = 0
+#		print 'mpd connected'
 		self.myBBC = BBCradio()
-		self.logger.info("Loaded station count:"+str(self.myBBC.load()))
+		count = self.myBBC.load(self.client)
+		self.logger.info("Loaded station count:"+str(count))
+		if count == 0:
+			self.logger.error('No BBC stations loaded.')
+			print '**Error: No BBC stations loaded. **'
 		self.updatedb()						# just run this occasionally
 		self.play()
-	
+
+	def _start_mpd(self):
+		self. logger.info('Starting mpd client.')
+		self.client = mpd.MPDClient()
+		self.client.timeout = 10 # seconds
+		self.client.idletimeout = None
+		self.client.connect("localhost", 6600)
+		self.client.clear()
+		self.logger.info("python-mpd2 version:"+self.client.mpd_version)
+		self.updatedb()						# just run this occasionally
+		self.play()
+		print 'mpd connected'
+		return(0)
+		
 	def updatedb(self):
 		'''Update the mpd db.'''
 		self.logger.info("Updating db")
@@ -66,7 +86,6 @@ class Mpc:
 		'''Call the BBCradio routine to load the stations.'''
 		if self.podmode == False:		# only load the stations if we are in radio mode
 			self.myBBC.load()
-			self.play()
 		else:
 			self.stale_links = 1	# flag for later
 		return(0)
@@ -125,11 +144,20 @@ class Mpc:
 		self.logger.info('Stop routine.')
 		try:
 			self.client.stop()
-		except:
-			self.logger.warning("Failed to send stop command.", exc_info=True)
-			time.sleep(1)
-			self.logger.warning("Trying again.....")
+		except mpd.ConnectionError:
+			self.logger.warning('mpd connection error.')
 			try:
+				self.client.connect("localhost", 6600)
+				self.client.stop()
+			except:
+				self.logger.warning("Failed to send stop command again.", exc_info=True)
+				return(1)
+		except:
+			self.logger.warning("Failed to send stop command, unknown error.", exc_info=True)
+			time.sleep(1)
+			self.logger.warning("Trying again, reconnecting first.....")
+			try:
+				self.client.connect("localhost", 6600)
 				self.client.stop()
 			except:
 				self.logger.warning("Failed to send stop command again.", exc_info=True)
@@ -144,8 +172,18 @@ class Mpc:
 			self.logger.info("Selected station: "+str(self.station))
 			try:
 				self.client.play(self.station)
+			except mpd.ConnectionError:
+				self.logger.warning('mpd connection error.')
+				try:
+					self.client.connect("localhost", 6600)
+					self.client.play(self.station)
+				except:
+					self.logger.warning("Failed to send play command again.", exc_info=True)
+					raise
+					return(1)
 			except:
 				self.logger.error("Failed to set play for radio station.")
+				raise
 		else:
 			self.logger.info("Selected pod: "+str(self.podnumber))
 			try:
@@ -167,6 +205,14 @@ class Mpc:
 			return(1)
 		try:
 			self.client.pause(1)
+		except MPDClient.ConnectionError:
+			self.logger.warning('mpd connection error.')
+			try:
+				self.client.connect("localhost", 6600)
+				self.client.pause(1)
+			except:
+				self.logger.warning("Failed to send pause command again.", exc_info=True)
+				return(1)
 		except:
 			self.logger.error("Failed to pause playback.")
 		self.playState = self.STOPPED
@@ -184,6 +230,14 @@ class Mpc:
 			return(1)
 		try:
 			self.client.pause(0)
+		except MPDClient.ConnectionError:
+			self.logger.warning('mpd connection error.')
+			try:
+				self.client.connect("localhost", 6600)
+				self.client.pause(0)
+			except:
+				self.logger.warning("Failed to send unpause command again.", exc_info=True)
+				return(1)
 		except:
 			self.logger.error("Failed to unpause playback.")
 		self.playState = self.PLAYING

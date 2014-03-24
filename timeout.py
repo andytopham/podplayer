@@ -11,20 +11,25 @@ OLEDTIMEOUT = 1
 TEMPERATURETIMEOUT = 15
 STATIONTIMEOUT = 120
 AUDIOTIMEOUT = 30
+# verbose ones
+VOLEDTIMEOUT = 1
+VTEMPERATURETIMEOUT = 15
+VSTATIONTIMEOUT = 120
+VAUDIOTIMEOUT = 10
 
 class Timeout:
 	def __init__(self, verbose=0):
 		self.logger = logging.getLogger(__name__)
 		self.logger.info('Setting timeouts: verbose='+str(verbose))
 		if verbose == 1:
-			self.logger.info('Timeouts(mins): OLED='+str(OLEDTIMEOUT)
-				+' Temperature='+str(TEMPERATURETIMEOUT)
-				+' Station='+str(STATIONTIMEOUT)
-				+' AudioTimeout='+str(AUDIOTIMEOUT))
-			self.oledupdatefreq = datetime.timedelta(minutes=OLEDTIMEOUT)
-			self.temperatureupdatefreq = datetime.timedelta(minutes=TEMPERATURETIMEOUT)
-			self.stationupdatefreq = datetime.timedelta(minutes=STATIONTIMEOUT)	# a wild guess at how often the bbc change the key
-			self.audiotimeoutfreq = datetime.timedelta(minutes=AUDIOTIMEOUT)
+			self.logger.info('Timeouts(mins): OLED='+str(VOLEDTIMEOUT)
+				+' Temperature='+str(VTEMPERATURETIMEOUT)
+				+' Station='+str(VSTATIONTIMEOUT)
+				+' AudioTimeout='+str(VAUDIOTIMEOUT))
+			self.oledupdatefreq = datetime.timedelta(minutes=VOLEDTIMEOUT)
+			self.temperatureupdatefreq = datetime.timedelta(minutes=VTEMPERATURETIMEOUT)
+			self.stationupdatefreq = datetime.timedelta(minutes=VSTATIONTIMEOUT)	# a wild guess at how often the bbc change the key
+			self.audiotimeoutfreq = datetime.timedelta(minutes=VAUDIOTIMEOUT)
 		else:
 			self.logger.info('Timeouts(mins): OLED='+str(OLEDTIMEOUT)
 				+' Temperature='+str(TEMPERATURETIMEOUT)

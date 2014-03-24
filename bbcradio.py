@@ -14,12 +14,12 @@ class BBCradio:
 	URLSTREAM = 1
 	URLDETAILS = 2
 	urls = [["BBCR2",	"r2_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_two" ],
-				["BBCR4",	"r4_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four" ],
-				["BBCR4x",	"r4x_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four_extra"],
-				["BBCR5",	"r5l_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_five_live"],
-				["BBCR6",	"r6_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_6music"]
-				]
-					
+			["BBCR4",	"r4_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four" ],
+			["BBCR4x",	"r4x_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four_extra"],
+			["BBCR5",	"r5l_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_five_live"],
+			["BBCR6",	"r6_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_6music"]
+			]
+				
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
 		__all__ = ['stationcount', 'load', 'stationname']		# list the functions available here
@@ -28,7 +28,7 @@ class BBCradio:
 		'''Return the number of radio station urls.'''
 		return(len(self.urls))
 		
-	def load(self):
+	def load(self, c):
 		'''Load the stations stored in the urls array. '''
 		lines = []
 		maxstation = self.stationcount()
@@ -58,9 +58,13 @@ class BBCradio:
 				source.close()					# do we need this??
 			except:
 				logging.warning("Could not open: "+i[self.URLSTREAM], exc_info=True)
+				maxstation -= 1
+#		print lines
 		for line in lines:
 			try:
-				q = subprocess.Popen("mpc -q add "+re.escape(line[6:]), shell=True)	# use the re.escape to escape the & which was breaking up the string
+				self.logger.info("Loading: "+line[6:])
+				c.addid(line[6:].rstrip('\n'))
+#				q = subprocess.Popen("mpc -q add "+re.escape(line[6:]), shell=True)	# use the re.escape to escape the & which was breaking up the string
 			except:
 				self.logger.warning("Failed to add file to playlist", exc_info=True)
 			q.wait()

@@ -64,6 +64,7 @@ class Gpio:
 		self.setupcallbacks()
 		self.myInfoDisplay = infodisplay.InfoDisplay()
 		self.myMpc = Mpc()
+#		self.myMpc.start_mpd()
 		self.mySystem = System()
 
 	def startup(self, verbosity):
@@ -76,8 +77,8 @@ class Gpio:
 			time.sleep(.2)
 			self.myInfoDisplay.scroll(self.programmename)
 			self.process_timeouts()
-			r = self.process_button_presses()
-			if r == 1:
+			reboot = self.process_button_presses()
+			if reboot == 1:
 				return(1)
 				
 	def process_timeouts(self):
@@ -98,7 +99,7 @@ class Gpio:
 				return(0)
 		if timeout_type == AUDIOTIMEOUT:
 			self.myMpc.audioTimeout()
-			self.programmename = 'Timeout'
+			self.programmename = '    Timeout     '
 		return(0)
 
 	def process_button_presses(self):
@@ -117,6 +118,7 @@ class Gpio:
 				self.myMpc.toggle()
 			elif button == BUTTONREBOOT:
 				print 'Rebooting...'
+				self.myMpc.stop()
 				self.myInfoDisplay.writerow(1, 'Rebooting...     ')
 				time.sleep(2)
 				p = subprocess.call(['reboot'])
