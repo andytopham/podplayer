@@ -3,13 +3,13 @@
 	Imported by iradio.
 	Will poll switches in a loop if called standalone.
 	Slice of Pi pinout:
-		Pin	Slice 	RPi		Use
-		11	GP0		GPIO17	SW1
-		12	GP1		GPIO18	SW2
-		13	GP2		GPIO21 	-
-		15	GP3		GPIO22	yellow led
+		Pin	Slice 	RPi/BCM	Use
+		11	GP0		GPIO17	Next
+		12	GP1		GPIO18	Stop
+		13	GP2		GPIO21 	Volup
+		15	GP3		GPIO22	Voldown
 		16	GP4		GPIO23	-
-		18	GP5		GPIO24	red led
+		18	GP5		GPIO24
 		22	GP6		GPIO25
 		7	GP7		GPIO4
 	RPi.GPIO lib is required for this class. To install gpio lib:
@@ -18,16 +18,17 @@
 		sudo apt-get install python-rpi.gpio python3-rpi.gpio
 '''
 import RPi.GPIO as GPIO
-import time, datetime
-import logging, subprocess
+import time, datetime, logging, subprocess
 import timeout, infodisplay
 from mpc2 import Mpc
 from system import System
 
+# Using BCM numbering system...
 NEXTSW = 17
 STOPSW = 18
 VOLUP = 21
 VOLDOWN = 22
+
 BUTTONNONE = 0
 BUTTONNEXT = 1
 BUTTONSTOP = 2
@@ -35,11 +36,11 @@ BUTTONVOLUP = 3
 BUTTONVOLDOWN = 4
 BUTTONMODE = 5
 BUTTONREBOOT = 6
-UPDATEOLED = 1
-UPDATETEMPERATURE = 2
-UPDATESTATION = 3
-AUDIOTIMEOUT = 4
 PRESSED = False
+UPDATEOLEDFLAG = 1
+UPDATETEMPERATUREFLAG = 2
+UPDATESTATIONFLAG = 3
+AUDIOTIMEOUTFLAG = 4
 
 class Gpio:
 	'''A class containing ways to handle the RPi gpio. '''
@@ -47,15 +48,7 @@ class Gpio:
 		'''Initialise GPIO ports. '''
 		self.logger = logging.getLogger(__name__)
 		self.logger.info("Starting gpio class")
-		#start with some constants
-#		self.NEXTSW = 17
-#		self.STOPSW = 18
-#		self.VOLUP = 21
-#		self.VOLDOWN = 22
-#		self.YELLOWLED = 23					# temporary hack from 22
-#		self.REDLED = 24
-#		self.PRESSED = config.PRESSED		# True for small box, False for metal box
-		#then initialise the variables
+		#initialise the variables
 		self.next = 0
 		self.stop = 0
 		self.vol = 0
@@ -74,30 +67,48 @@ class Gpio:
 	def master_loop(self):
 		while True:
 			# regular events first
-			time.sleep(.2)
-			self.myInfoDisplay.scroll(self.programmename)
-			self.process_timeouts()
-			reboot = self.process_button_presses()
-			if reboot == 1:
+			try:
+				time.sleep(.2)
+				self.myInfoDisplay.scroll(self.programmename)
+				self.process_timeouts()
+				reboot = self.process_button_presses()
+				if reboot == 1:
+					GPIO.cleanup()
+					return(1)
+			except KeyboardInterrupt:
+				print 'Keyboard interrupt'
+				self.logger.warning('Keyboard interrupt')
+				self.myInfoDisplay.writerow(1,'Keyboard stop.  ')
+				GPIO.cleanup()
+				return(1)
+			except:			# all other errors - should never get here
+				print 'Unknown error'
+				self.myInfoDisplay.writerow(1,'Master loop err.')
+				self.logger.error('Unknown error in master loop.')
 				return(1)
 				
 	def process_timeouts(self):
 		'''Cases for each of the timeout types.'''
 		timeout_type = self.myTimeout.checktimeouts()
+#		print 'Timeout type: ',timeout_type
 		if timeout_type == 0:
 			return(0)
-		if timeout_type == UPDATEOLED:
-			self.myInfoDisplay.update_row2(0)		# this has to be here to update time
-		if timeout_type == UPDATETEMPERATURE:
-			self.myInfoDisplay.update_row2(1)
-		if timeout_type == UPDATESTATION:
-			self.myMpc.loadbbc()						# handles the bbc links going stale
+		if timeout_type == UPDATEOLEDFLAG:
+			remaining = self.myTimeout.get_time_remaining()
+			self.myInfoDisplay.update_row2(False, remaining)		# this has to be here to update time
+		if timeout_type == UPDATETEMPERATUREFLAG:
+			self.myInfoDisplay.update_row2(True)
+		if timeout_type == UPDATESTATIONFLAG:
+			# handle the bbc links going stale
+			if self.myMpc.loadbbc():			# failed
+				return(1)
+			self.myMpc.play()
 			if self.mySystem.disk_usage():
 				self.myInfoDisplay.writerow(1, 'Out of disk.')
 				sys.exit()
 			else:
 				return(0)
-		if timeout_type == AUDIOTIMEOUT:
+		if timeout_type == AUDIOTIMEOUTFLAG:
 			self.myMpc.audioTimeout()
 			self.programmename = '    Timeout     '
 		return(0)
@@ -132,14 +143,13 @@ class Gpio:
 	
 	def setup(self):
 		self.logger.debug("def gpio setup")
-		self.logger.info("RPi board revision:"+str(GPIO.RPI_REVISION)+". RPi.GPIO revision:"+str(GPIO.VERSION)+".  ")
+		rev = GPIO.RPI_REVISION
+		print 'RPi board revision: ',rev
+		self.logger.info("RPi board revision:"+str(rev)
+						+". RPi.GPIO revision:"+str(GPIO.VERSION)+".  ")
 		# use P1 header pin numbering convention
 		GPIO.setmode(GPIO.BCM)
-		GPIO.setwarnings(False)
-		a = [17,18,21,22,23,24,25,4]
-		j = [0,0,0,0,0,0,0,0]
-		for i in range(len(a)):
-			GPIO.setup(a[i],GPIO.IN)
+		GPIO.setwarnings(True)
 		GPIO.setup(NEXTSW, GPIO.IN)
 		GPIO.setup(STOPSW, GPIO.IN)
 		GPIO.setup(VOLUP, GPIO.IN)
@@ -242,6 +252,22 @@ class Gpio:
 			return(1)
 		return(0)
 		
+	def is_volup_held_down(self,delay):
+		''' Call this after a delay after detecting the volup button is pressed.
+			If the button is still pressed, then return 1. '''
+		time.sleep(delay)
+		if GPIO.input(VOLUP) == PRESSED:
+			return(True)
+		return(False)
+
+	def is_voldown_held_down(self,delay):
+		''' Call this after a delay after detecting the volup button is pressed.
+			If the button is still pressed, then return 1. '''
+		time.sleep(delay)
+		if GPIO.input(VOLDOWN) == PRESSED:
+			return(True)
+		return(False)
+		
 	def processbuttons(self):
 		'''Called by the main program. Expects callback processes to have
 			already set the Next and Stop states.'''
@@ -268,11 +294,13 @@ class Gpio:
 		if self.vol == 1:
 			self.logger.info("Button pressed vol up")
 			self.vol=0
-			button = BUTTONVOLUP
+			if self.is_volup_held_down(.1):
+				button = BUTTONVOLUP
 		if self.vol == -1:
 			self.logger.info("Button pressed vol down")
 			self.vol=0
-			button = BUTTONVOLDOWN
+			if self.is_voldown_held_down(.1):
+				button = BUTTONVOLDOWN
 		return(button)
 
 	def stopled(self,state):

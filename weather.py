@@ -18,19 +18,26 @@ class Weather:
 			string = 'http://open.live.bbc.co.uk/weather/feeds/en/'+bbckey+'/observations.rss'
 			soup = BeautifulSoup(requests.get(string).text)
 		except HTTPError, e:
-			self.logger.error("Failed to fetch temperature")
+			self.logger.error('Failed to fetch temperature')
 			temperature = 0
 		except URLError, e:
-			self.logger.error("Failed to reach temperature website")
+			self.logger.error('Failed to reach temperature website')
 			temperature = 1
-		else:
+		except:
+			self.logger.error('Unknown error fetching temperature')
+			temperature = 99	
+		try:
 			g = unicode(soup.item.description)
 			found = re.search(": [0-9]*.*C",g)
 			ggg = re.search("[0-9][0-9]|[0-9]",found.group())
 			temperature=ggg.group()
 			#this example shows how to get the temperatures from the forecast...
 			#temperatures=[str(tem.contents[0]) for tem in table.find_all("span",class_="units-value temperature-value temperature-value-unit-c")]
-			return(temperature)
+		except:
+			self.logger.error('Failed to convert temperature.')
+			temperature=0
+		self.logger.info('Temperature='+str(temperature))
+		return(temperature)
 
 	def wunder(self,key,locn):
 		self.logger.debug("Fetching wunder temperature")

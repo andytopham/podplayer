@@ -1,21 +1,24 @@
 #!/usr/bin/python
 '''Control a series of timeouts.'''
 
-import time
-import datetime
-import logging
-import config
+import time, datetime, logging
 
-# all in minutes
+# Timeout values, all in minutes
 OLEDTIMEOUT = 1
 TEMPERATURETIMEOUT = 15
-STATIONTIMEOUT = 120
+STATIONTIMEOUT = 240
 AUDIOTIMEOUT = 30
 # verbose ones
 VOLEDTIMEOUT = 1
 VTEMPERATURETIMEOUT = 15
-VSTATIONTIMEOUT = 120
-VAUDIOTIMEOUT = 10
+VSTATIONTIMEOUT = 240
+VAUDIOTIMEOUT = 30
+
+# Timeout flags
+UPDATEOLEDFLAG = 1
+UPDATETEMPERATUREFLAG = 2
+UPDATESTATIONFLAG = 3
+AUDIOTIMEOUTFLAG = 4
 
 class Timeout:
 	def __init__(self, verbose=0):
@@ -45,27 +48,42 @@ class Timeout:
 		self.temperaturestart = datetime.datetime.now()
 		self.stationstart = datetime.datetime.now()
 		self.audiostart = datetime.datetime.now()
+		self.verbosity = verbose
 
 	def checktimeouts(self):
 		now = datetime.datetime.now()
 		if (now - self.start) > self.oledupdatefreq:
 			self.logger.info('Timeout: oled')
 			self.start = datetime.datetime.now()
-			return(config.UPDATEOLED)
+			return(UPDATEOLEDFLAG)
 		if (now - self.temperaturestart) > self.temperatureupdatefreq:
 			self.logger.info('Timeout: temperature')
 			self.temperaturestart = datetime.datetime.now()
-			return(config.UPDATETEMPERATURE)
+			return(UPDATETEMPERATUREFLAG)
 		if (now - self.stationstart) > self.stationupdatefreq:
 			self.logger.info('Timeout: station')
 			self.stationstart = datetime.datetime.now()
-			return(config.UPDATESTATION)
+			return(UPDATESTATIONFLAG)
 		if (now - self.audiostart) > self.audiotimeoutfreq:
-			self.logger.warning("*Audio timeout*")
+			self.logger.warning('Audio timeout at '
+								+datetime.datetime.now().strftime('%H:%M'))
 			self.audiostart = datetime.datetime.now()
-			return(config.AUDIOTIMEOUT)
+			return(AUDIOTIMEOUTFLAG)
 		return(0)
 		
 	def resetAudioTimeout(self):
 		self.audiostart = datetime.datetime.now()
 	
+	def get_time_remaining(self):
+		if self.verbosity == 0:
+			return(0)
+		now = datetime.datetime.now()
+		try:
+			x = now - self.audiostart
+			mins = x.seconds // 60
+		except:
+			self.logger.warning('Cannot get time remaining mins.')
+			mins = 99
+#		self.logger.info('Time remaining: '+str(mins)+' minutes')
+		return(mins)
+		

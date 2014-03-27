@@ -28,26 +28,31 @@ class BBCradio:
 		'''Return the number of radio station urls.'''
 		return(len(self.urls))
 		
-	def load(self, c):
-		'''Load the stations stored in the urls array. '''
-		lines = []
-		maxstation = self.stationcount()
-		self.logger.warning("Getting BBC stations loaded")		# refresh periodically, warning level since hardly ever in log
+	def _refresh_pls_files(self):
 		try:
-			subprocess.Popen("rm -f *.pls", shell=True)			# need the -f to force removal of unwritable files
+			subprocess.Popen("rm -f *.pls", shell=True)		# need the -f to force removal of unwritable files
 			q = subprocess.Popen('mpc -q clear', shell=True)
 			q.wait()
 		except:
 			self.logger.error('Failed to clear old pls files.', exc_info=True)
-			return(maxstation)
+			return(1)
 		for i in self.urls:
 			self.logger.info("Fetching: "+i[self.URLID])
 			try:
-				p = subprocess.Popen('wget -q http://www.bbc.co.uk/radio/listen/live/'+i[self.URLSTREAM], shell=True)	# need to trap errors here.
-				p.wait()		# need to wait for the last cmd to finish before we can read the file.
+				p = subprocess.Popen('wget -q http://www.bbc.co.uk/radio/listen/live/'
+									+i[self.URLSTREAM], shell=True)
+				p.wait()		# wait for last cmd to finish before we can read the file.
 			except HTTPError, e:
 				self.logger.error("Failed to fetch address for "+i[self.URLID], exc_info=True)
-				maxstation -= 1					# not as many as we planned
+				return(1)
+		return(0)
+	
+	def load(self, c):
+		'''Load the stations stored in the urls array. '''
+		lines = []
+		self.logger.warning("Getting BBC stations loaded")
+		if self._refresh_pls_files():
+			return(1)
 		for i in self.urls:
 			self.logger.info("Opening the stream file: "+i[self.URLSTREAM])
 			try:
@@ -58,19 +63,17 @@ class BBCradio:
 				source.close()					# do we need this??
 			except:
 				logging.warning("Could not open: "+i[self.URLSTREAM], exc_info=True)
-				maxstation -= 1
-#		print lines
+				return(1)
 		for line in lines:
 			try:
 				self.logger.info("Loading: "+line[6:])
 				c.addid(line[6:].rstrip('\n'))
-#				q = subprocess.Popen("mpc -q add "+re.escape(line[6:]), shell=True)	# use the re.escape to escape the & which was breaking up the string
 			except:
 				self.logger.warning("Failed to add file to playlist", exc_info=True)
-			q.wait()
-		self.logger.info("Loaded BBC stations. Number of stations="+str(maxstation))
-		print "Loaded BBC stations. Number of stations="+str(maxstation)
-		return(maxstation)
+				return(1)
+		self.logger.info('Loaded BBC stations.')
+		print 'Loaded BBC stations.'
+		return(0)
 		
 	def _stationscanner(self):
 		''' A test routine to find out how often the bbc updates the pls files.'''

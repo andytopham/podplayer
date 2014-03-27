@@ -17,7 +17,6 @@ class Mpc:
 	STOPPED = 0
 	PLAYING = 1
 	VOLSTEP = 5
-#	TIMEDOUT = 2	#	this is just the same as STOPPED
 	STOPPEDPROGNAME = "                   ."
 	PAUSE = 1
 	UNPAUSE = 0
@@ -37,11 +36,8 @@ class Mpc:
 		self.client.connect("localhost", 6600)
 		self.client.clear()
 		self.logger.info("python-mpd2 version:"+self.client.mpd_version)
-#		print 'mpd connected'
 		self.myBBC = BBCradio()
-		count = self.myBBC.load(self.client)
-		self.logger.info("Loaded station count:"+str(count))
-		if count == 0:
+		if self.myBBC.load(self.client):
 			self.logger.error('No BBC stations loaded.')
 			print '**Error: No BBC stations loaded. **'
 		self.updatedb()						# just run this occasionally
@@ -85,7 +81,7 @@ class Mpc:
 	def loadbbc(self):
 		'''Call the BBCradio routine to load the stations.'''
 		if self.podmode == False:		# only load the stations if we are in radio mode
-			self.myBBC.load()
+			self.myBBC.load(self.client)
 		else:
 			self.stale_links = 1	# flag for later
 		return(0)
@@ -190,6 +186,12 @@ class Mpc:
 				self.client.play(self.podnumber)
 			except:
 				self.logger.error("Failed to set play for podcast.")
+		time.sleep(.1)
+		try:
+			p = self.client.currentsong()
+		except:
+			self.logger.error('Failed to fetch currentsong after play.')
+			print 'No current song after play'
 		self.playState = self.PLAYING
 		return(0)
 

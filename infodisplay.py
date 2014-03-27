@@ -14,14 +14,22 @@ class InfoDisplay(Oled):
 		self.myWeather = Weather()
 		self.update_row2(1)
 		
-	def update_row2(self, t):
+	def update_row2(self, temperature_refresh_needed, time_remaining=0):
 		'''Time and temperature display.'''
 		self.logger.info('Update row2:'+time.strftime("%R"))
-		if t:
+		if temperature_refresh_needed:
 			self.temperature = self.myWeather.wunder(config.key, config.locn)
-		self.writerow(2,
-			time.strftime("%R")
-			+"     {0:4.1f}".format(float(self.temperature))
-			+"^C ")
+		if time_remaining == 0:
+			self.writerow(2,
+				time.strftime("%R")
+				+"     {0:4.1f}".format(float(self.temperature))
+				+"^C ")
+		else:
+			self.writerow(2,
+				time.strftime("%R")
+				+'  '
+				+str(time_remaining)
+				+" {0:4.1f}".format(float(self.temperature))
+				+"^C ")		
 		return(0)
 		

@@ -2,8 +2,7 @@
 '''Podcast + internet radio player.'''
 import os
 import sys			# required for sys.exit()
-import time, datetime
-import argparse, logging
+import time, datetime, argparse, logging
 from gpio import Gpio
 
 LOGFILE = '/home/pi/podplayer/log/radio.log'
@@ -66,8 +65,11 @@ if __name__ == "__main__":
 	logging.warning('*********************************')
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')
 			+". Running radio class as a standalone app")
-	logging.warning("Use -v command line option to increase logging.")
-
+	if verbose == 0:
+		logging.warning("Use -v command line option to increase logging.")
+	else:
+		logging.warning("Logging = verbose.")
+	
 	#Constants
 	logging.info("Running radio class as a standalone app")
 	_radio_start(verbose)
