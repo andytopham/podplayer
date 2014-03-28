@@ -90,7 +90,7 @@ class BBCradio:
 		return(0)
 		
 	def _get_end_time(self,i, link):
-#		print link
+		'''Extract the end time from the link.'''
 		now = time.time()
 		e = link.split('&e=')[1]
 		end = float(e.split('&h=')[0])
@@ -100,6 +100,7 @@ class BBCradio:
 		return(0)
 		
 	def check_time_left(self, station):
+		'''Return the time left before we get to the end time for this stream'''
 		now = time.time()
 		end = self.expiry_times[station]
 		mins_left = int((end - now)/60)

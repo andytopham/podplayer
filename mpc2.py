@@ -11,7 +11,7 @@ from bbcradio import BBCradio
 import mpd
 # from mpd import MPDClient
 
-RENEWALTIME = 10		# minutes
+RENEWALTIME = 10		# minutes until stream times out
 
 class Mpc:
 	'''Class: mpc - using native python. Uses bbcradio class.'''
@@ -177,6 +177,12 @@ class Mpc:
 				self.logger.warning("Failed to send stop command again.", exc_info=True)
 				return(1)
 		self.playState = self.STOPPED		# argh! this has to be this late, or it resets elapsed to zero!!
+		return(0)
+		
+	def recover_playing(self):
+		'''When we reload the stations, we need to restart playing if appropriate.'''
+		if self.playState == self.PLAYING:
+			self.play()
 		return(0)
 		
 	def play(self):

@@ -1,10 +1,9 @@
 #!/usr/bin/python
 ''' Richer Oled information.'''
-import serial
-import subprocess, time, logging, datetime
-import config
+import serial, subprocess, time, logging, datetime
 from oled import Oled
 from weather import Weather
+import config
 
 class InfoDisplay(Oled):
 	'''	Richer info on the oled. '''
@@ -16,20 +15,15 @@ class InfoDisplay(Oled):
 		
 	def update_row2(self, temperature_refresh_needed, time_remaining=0):
 		'''Time and temperature display.'''
-		self.logger.info('Update row2:'+time.strftime("%R"))
+		clock = time.strftime("%R")
+		self.logger.info('Update row2:'+clock)
 		if temperature_refresh_needed:
 			self.temperature = self.myWeather.wunder(config.key, config.locn)
-		if time_remaining == 0:
+		if True:
 			self.writerow(2,
-				time.strftime("%R")
-				+"     {0:4.1f}".format(float(self.temperature))
-				+"^C ")
-		else:
+				'{0:5s}  {1:7.1f}^C'.format(clock, float(self.temperature)))
+		else:			# a version for debugging
 			self.writerow(2,
-				time.strftime("%R")
-				+'  '
-				+str(time_remaining)
-				+" {0:4.1f}".format(float(self.temperature))
-				+"^C ")		
+				'{0:5s}{1:4d}{2:5.1f}^C'.format(clock, time_remaining, float(self.temperature)))		
 		return(0)
 		

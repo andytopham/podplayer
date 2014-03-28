@@ -59,10 +59,11 @@ class Gpio:
 	def startup(self, verbosity):
 		self.myInfoDisplay = infodisplay.InfoDisplay()
 		self.myMpc = Mpc()
-#		self.myMpc.start_mpd()
 		self.mySystem = System()
 		self.myTimeout = timeout.Timeout(verbosity)
 		self.programmename = self.myMpc.progname()
+		remaining = self.myMpc.check_time_left()
+		self.myInfoDisplay.update_row2(False, remaining)
 	
 	def master_loop(self):
 		while True:
@@ -93,13 +94,12 @@ class Gpio:
 	def process_timeouts(self):
 		'''Cases for each of the timeout types.'''
 		timeout_type = self.myTimeout.checktimeouts()
-#		print 'Timeout type: ',timeout_type
 		if timeout_type == 0:
 			return(0)
 		if timeout_type == UPDATEOLEDFLAG:
 #			remaining = self.myTimeout.get_time_remaining()
 			remaining = self.myMpc.check_time_left()
-			self.myInfoDisplay.update_row2(False, remaining)		# this has to be here to update time
+			self.myInfoDisplay.update_row2(False, remaining)	# this has to be here to update time
 		if timeout_type == UPDATETEMPERATUREFLAG:
 			self.myInfoDisplay.update_row2(True)
 		if timeout_type == UPDATESTATIONFLAG:
@@ -108,7 +108,7 @@ class Gpio:
 				time.sleep(1)					# wait to try again
 				if self.myMpc.loadbbc():		# failed again
 					return(1)
-			self.myMpc.play()
+			self.myMpc.recover_playing()
 			if self.mySystem.disk_usage():
 				self.myInfoDisplay.writerow(1, 'Out of disk.')
 				sys.exit()
