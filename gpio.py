@@ -55,12 +55,12 @@ class Gpio:
 		self.pod = 0
 		self.setup()
 		self.setupcallbacks()
+
+	def startup(self, verbosity):
 		self.myInfoDisplay = infodisplay.InfoDisplay()
 		self.myMpc = Mpc()
 #		self.myMpc.start_mpd()
 		self.mySystem = System()
-
-	def startup(self, verbosity):
 		self.myTimeout = timeout.Timeout(verbosity)
 		self.programmename = self.myMpc.progname()
 	
@@ -79,12 +79,15 @@ class Gpio:
 				print 'Keyboard interrupt'
 				self.logger.warning('Keyboard interrupt')
 				self.myInfoDisplay.writerow(1,'Keyboard stop.  ')
+				self.myMpc.stop()
 				GPIO.cleanup()
 				return(1)
 			except:			# all other errors - should never get here
 				print 'Unknown error'
 				self.myInfoDisplay.writerow(1,'Master loop err.')
 				self.logger.error('Unknown error in master loop.')
+				self.myMpc.stop()
+				GPIO.cleanup()
 				return(1)
 				
 	def process_timeouts(self):
@@ -94,14 +97,17 @@ class Gpio:
 		if timeout_type == 0:
 			return(0)
 		if timeout_type == UPDATEOLEDFLAG:
-			remaining = self.myTimeout.get_time_remaining()
+#			remaining = self.myTimeout.get_time_remaining()
+			remaining = self.myMpc.check_time_left()
 			self.myInfoDisplay.update_row2(False, remaining)		# this has to be here to update time
 		if timeout_type == UPDATETEMPERATUREFLAG:
 			self.myInfoDisplay.update_row2(True)
 		if timeout_type == UPDATESTATIONFLAG:
 			# handle the bbc links going stale
 			if self.myMpc.loadbbc():			# failed
-				return(1)
+				time.sleep(1)					# wait to try again
+				if self.myMpc.loadbbc():		# failed again
+					return(1)
 			self.myMpc.play()
 			if self.mySystem.disk_usage():
 				self.myInfoDisplay.writerow(1, 'Out of disk.')
@@ -185,7 +191,8 @@ class Gpio:
 		callback processes listed above. This ensures that we get real responsiveness
 		for button presses. Callbacks are run in a parallel process.'''
 		self.logger.info("Using callbacks")
-		BOUNCETIME=100
+#		BOUNCETIME=100
+		BOUNCETIME=200
 		if PRESSED == True:
 			GPIO.add_event_detect(NEXTSW, GPIO.RISING, callback=self.pressednext, bouncetime=BOUNCETIME)
 			GPIO.add_event_detect(STOPSW, GPIO.RISING, callback=self.pressedstop, bouncetime=BOUNCETIME)
@@ -355,7 +362,26 @@ class Gpio:
 				print GPIO.input(a[i]),"  ",
 			print
 			time.sleep(1)
-		
+	
+	def bounce_test(self):
+		'''Print the time between the first two switch bounces.'''
+		a = [17,18,21,22]
+		for i in range(len(a)):
+			GPIO.setup(a[i],GPIO.IN)
+			print 'Testing input '+str(a[i])+', press when ready...'
+			GPIO.setup(a[i],GPIO.IN)
+			for j in range(3):
+				t = GPIO.input(a[i])
+				while t == GPIO.input(a[i]):		# wait for switch press
+					pass
+				s = GPIO.input(a[i])
+				start = datetime.datetime.now()
+				while s == GPIO.input(a[i]):		# timing until state changes
+					pass
+				end = datetime.datetime.now()		
+				print end-start
+		return(0)
+	
 if __name__ == "__main__":
 	'''Called if this file is called standalone. Then just runs a selftest. '''
 	logging.basicConfig(filename='log/gpio.log',
@@ -364,6 +390,7 @@ if __name__ == "__main__":
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running gpio class as a standalone app")
 	myGpio = Gpio()
-	myGpio.setup()
-	myGpio.scan()
-	myGpio.checkforstuckswitches()
+#	myGpio.setup()
+	myGpio.bounce_test()
+#	myGpio.scan()
+#	myGpio.checkforstuckswitches()

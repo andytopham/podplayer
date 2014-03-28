@@ -11,6 +11,8 @@ from bbcradio import BBCradio
 import mpd
 # from mpd import MPDClient
 
+RENEWALTIME = 10		# minutes
+
 class Mpc:
 	'''Class: mpc - using native python. Uses bbcradio class.'''
 	MP3DIR = "/var/lib/mpd/music/"
@@ -55,6 +57,14 @@ class Mpc:
 		self.play()
 		print 'mpd connected'
 		return(0)
+	
+	def check_time_left(self):
+		mins_left = self.myBBC.check_time_left(self.station)
+		if mins_left < RENEWALTIME:
+			print 'Time is running out - reloading bbc...'
+			self.logger.warning('BBC token timeout, reloading stations.')
+			self.loadbbc()
+		return(mins_left)
 		
 	def updatedb(self):
 		'''Update the mpd db.'''
@@ -79,11 +89,19 @@ class Mpc:
 		return(self.podcount)
 		
 	def loadbbc(self):
-		'''Call the BBCradio routine to load the stations.'''
+		'''Call the BBCradio routine to load the stations. 
+		Sleeps are since bbc does not seem to respond well if we are too quick.'''
 		if self.podmode == False:		# only load the stations if we are in radio mode
-			self.myBBC.load(self.client)
+			time.sleep(1)
+			if self.myBBC.load(self.client):
+				print 'Failed to load BBC stations, trying again....'
+				time.sleep(1)
+				if self.myBBC.load(self.client):
+					print 'Failed to load BBC stations again.'
+					return(1)
 		else:
 			self.stale_links = 1	# flag for later
+		self.play()
 		return(0)
 		
 	def switchmode(self):

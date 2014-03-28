@@ -8,6 +8,7 @@ import datetime
 import requests
 from bs4 import BeautifulSoup
 
+
 class BBCradio:
 	# These are the indicies to the url array.
 	URLID = 0
@@ -22,6 +23,7 @@ class BBCradio:
 				
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
+		self.expiry_times = [None]*6
 		__all__ = ['stationcount', 'load', 'stationname']		# list the functions available here
 
 	def stationcount(self):
@@ -47,8 +49,12 @@ class BBCradio:
 				return(1)
 		return(0)
 	
-	def load(self, c):
+	def load(self, mpd_channel):
 		'''Load the stations stored in the urls array. '''
+		try:
+			mpd_channel.connect("localhost", 6600)		# refresh the connection
+		except:
+			pass		# it must be already connected
 		lines = []
 		self.logger.warning("Getting BBC stations loaded")
 		if self._refresh_pls_files():
@@ -57,23 +63,48 @@ class BBCradio:
 			self.logger.info("Opening the stream file: "+i[self.URLSTREAM])
 			try:
 				source=open(i[self.URLSTREAM],'r')
-				source.readline()				# this dumps first line of file
-				source.readline()
-				lines.append(source.readline())
-				source.close()					# do we need this??
+				header = source.readline()				# this dumps first line of file
+				if header != '[playlist]\n':
+					print 'Invalid pls file contents:',t
+					return(1)
+				source.readline()		# NumberOfEntries=2
+				file1 = source.readline()
+				source.readline()		# Title1=No Title
+				source.readline()		# Length1=-1
+				file2 = source.readline()
+				lines.append(file2)		# or, we could choose file1 - don't know difference
+				source.close()	
 			except:
-				logging.warning("Could not open: "+i[self.URLSTREAM], exc_info=True)
+				logging.warning("Could not open: "+i[self.URLSTREAM])
 				return(1)
-		for line in lines:
+		for index, line in enumerate(lines):
 			try:
 				self.logger.info("Loading: "+line[6:])
-				c.addid(line[6:].rstrip('\n'))
+				self._get_end_time(index, line[6:])
+				mpd_channel.addid(line[6:].rstrip('\n'))
 			except:
-				self.logger.warning("Failed to add file to playlist", exc_info=True)
+				self.logger.warning("Failed to add file to playlist: "+line[6:])
 				return(1)
 		self.logger.info('Loaded BBC stations.')
 		print 'Loaded BBC stations.'
 		return(0)
+		
+	def _get_end_time(self,i, link):
+#		print link
+		now = time.time()
+		e = link.split('&e=')[1]
+		end = float(e.split('&h=')[0])
+		mins_left = int((end - now)/60)
+		self.logger.info('Time left:'+str(mins_left))
+		self.expiry_times[i] = end
+		return(0)
+		
+	def check_time_left(self, station):
+		now = time.time()
+		end = self.expiry_times[station]
+		mins_left = int((end - now)/60)
+		self.logger.info('Time left:'+str(mins_left))
+		return(mins_left)
 		
 	def _stationscanner(self):
 		''' A test routine to find out how often the bbc updates the pls files.'''
