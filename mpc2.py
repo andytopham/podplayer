@@ -1,17 +1,14 @@
 #!/usr/bin/python
-'''Module to control mpd using the native python library python-mpd2. Imported by iradio.'''
-import time
-import datetime
-import logging
-import subprocess
-import requests
-import os
+'''Module to control mpd using the native python library python-mpd2.'''
+import time, datetime, logging, subprocess, requests, os
 from bs4 import BeautifulSoup
 from bbcradio import BBCradio
 import mpd
+import pdb
 # from mpd import MPDClient
 
-RENEWALTIME = 10		# minutes until stream times out
+RENEWALTIME = 15		# minutes until stream times out
+#RENEWALTIME = 114		# minutes until stream times out - for debug
 
 class Mpc:
 	'''Class: mpc - using native python. Uses bbcradio class.'''
@@ -20,8 +17,6 @@ class Mpc:
 	PLAYING = 1
 	VOLSTEP = 5
 	STOPPEDPROGNAME = "                   ."
-	PAUSE = 1
-	UNPAUSE = 0
 	
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
@@ -39,10 +34,11 @@ class Mpc:
 		self.client.clear()
 		self.logger.info("python-mpd2 version:"+self.client.mpd_version)
 		self.myBBC = BBCradio()
-		if self.myBBC.load(self.client):
+		if self.myBBC.load(self.client) == -1:
 			self.logger.error('No BBC stations loaded.')
 			print '**Error: No BBC stations loaded. **'
 		self.updatedb()						# just run this occasionally
+		self.setvol(50)
 		self.play()
 
 	def _start_mpd(self):
@@ -54,7 +50,7 @@ class Mpc:
 		self.client.clear()
 		self.logger.info("python-mpd2 version:"+self.client.mpd_version)
 		self.updatedb()						# just run this occasionally
-		self.play()
+#		self.play()
 		print 'mpd connected'
 		return(0)
 	
@@ -95,13 +91,16 @@ class Mpc:
 			time.sleep(1)
 			if self.myBBC.load(self.client):
 				print 'Failed to load BBC stations, trying again....'
+				self.logger.warning('Failed to load BBC stations, trying again....')
 				time.sleep(1)
-				if self.myBBC.load(self.client):
+				if self.myBBC.load(self.client) == -1:
 					print 'Failed to load BBC stations again.'
+					self.logger.warning('Failed to load BBC stations again.')
 					return(1)
 		else:
 			self.stale_links = 1	# flag for later
-		self.play()
+		if self.playState == self.PLAYING:
+			self.play()
 		return(0)
 		
 	def switchmode(self):
@@ -212,7 +211,8 @@ class Mpc:
 				self.logger.error("Failed to set play for podcast.")
 		time.sleep(.1)
 		try:
-			p = self.client.currentsong()
+			time.sleep(1)
+			p = self.client.currentsong()		# this is catching the old current song!!!!
 		except:
 			self.logger.error('Failed to fetch currentsong after play.')
 			print 'No current song after play'
@@ -269,6 +269,17 @@ class Mpc:
 		self.playState = self.PLAYING
 		return(0)
 		
+	def setvol(self,vol):
+		"""Set the volume."""
+		self.logger.info("Set vol: "+str(vol))
+		p = subprocess.check_output(['mpc', 'volume', str(vol)])
+#		line = p.splitlines()[2]			# fetch 3rd line
+#		vol,val = line.split()[0:2]
+		vol,val = p.split()[0:2]
+		print vol,val
+		self.logger.info(vol+' '+val)
+		return(val.strip('%'))
+
 	def chgvol(self,vol):
 		"""Send the change volume signal to mpc. python-mpd no longer supports chg volume."""
 		self.logger.info("Chg vol: "+str(vol))
@@ -276,12 +287,12 @@ class Mpc:
 			p = subprocess.check_output(['mpc', 'volume', '+'+str(self.VOLSTEP)])
 		else:
 			p = subprocess.check_output(['mpc', 'volume', str(-self.VOLSTEP)])
-		line = p.splitlines()[2]
+		line = p.splitlines()[2]			# fetch 3rd line
 		vol,val = line.split()[0:2]
 		print vol,val
 		self.logger.info(vol+' '+val)
-		return(0)
-		
+		return(val.strip('%'))
+			
 	def toggle(self):
 		"""Toggle mpc mode between playing and stopped."""
 		if self.playState == self.PLAYING:
@@ -305,6 +316,9 @@ class Mpc:
 		
 	def next(self):
 		"""Tell mpc to play the next item."""
+#		pdb.set_trace()
+#		print "** This is the Next routine!"
+		self.podmode = False
 		if self.podmode:
 			self.deleteFile()			# get rid of the one just moved from
 			self.podnumber += 1
@@ -315,9 +329,11 @@ class Mpc:
 			self.client.play(self.podnumber)
 			return(self.podnumber)
 		else:						# its radio mode
-			self.logger.info("Next radio station: moving to "+str(self.station+1)+" out of "+str(self.myBBC.stationcount()))
-			self.station += 1
-			if self.station > self.myBBC.stationcount()-1:
+			self.logger.info("Next radio station: moving to "+str(self.station+1)+" out of "+str(self.myBBC.stationcounter()))
+			self.station = self.station + 1
+#			print "Next: station="+str(self.station)
+#			print "Count="+str(self.myBBC.stationcounter()+1)
+			if self.station > self.myBBC.stationcounter()-1:
 				self.station = 0
 			self.play()
 			return(self.station)

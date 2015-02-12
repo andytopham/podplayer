@@ -7,7 +7,7 @@ import logging
 import datetime
 import requests
 from bs4 import BeautifulSoup
-
+import mpd
 
 class BBCradio:
 	# These are the indicies to the url array.
@@ -20,15 +20,23 @@ class BBCradio:
 			["BBCR5",	"r5l_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_five_live"],
 			["BBCR6",	"r6_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_6music"]
 			]
-				
+	newurls = [["BBCR2",	"bbcradio2.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_two" ],
+			["BBCR4",		"bbcradio4fm.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four" ],
+			["BBCR4x",		"bbcradio4extra.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four_extra"],
+			["BBCR5",		"bbc5live.pls",		"http://www.bbc.co.uk/radio/player/bbc_radio_five_live"],
+			["BBCR6",		"bbc6music.pls",	"http://www.bbc.co.uk/radio/player/bbc_6music"]
+			]		
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
 		self.expiry_times = [None]*6
-		__all__ = ['stationcount', 'load', 'stationname']		# list the functions available here
+		self.stationcount = 0
+		__all__ = ['stationcounter', 'load', 'stationname']		# list the functions available here
 
-	def stationcount(self):
+	def stationcounter(self):
 		'''Return the number of radio station urls.'''
+		self.logger.info("Counting stations. Count="+str(len(self.urls)))
 		return(len(self.urls))
+#		return(self.stationcount)
 		
 	def _refresh_pls_files(self):
 		try:
@@ -49,7 +57,27 @@ class BBCradio:
 				return(1)
 		return(0)
 	
-	def load(self, mpd_channel):
+	def _new_refresh_pls_files(self):
+		'''Works with the Feb 2015 BBC format.'''
+		try:
+			subprocess.Popen("rm -f *.pls", shell=True)		# need the -f to force removal of unwritable files
+			q = subprocess.Popen('mpc -q clear', shell=True)
+			q.wait()
+		except:
+			self.logger.error('Failed to clear old pls files.', exc_info=True)
+			return(1)
+		for i in self.newurls:
+			self.logger.info("Fetching: "+i[self.URLID])
+			try:
+				p = subprocess.Popen('wget -q http://www.radiofeeds.co.uk/'
+									+i[self.URLSTREAM], shell=True)
+				p.wait()		# wait for last cmd to finish before we can read the file.
+			except HTTPError, e:
+				self.logger.error("Failed to fetch address for "+i[self.URLID], exc_info=True)
+				return(1)
+		return(0)
+	
+	def oldload(self, mpd_channel):
 		'''Load the stations stored in the urls array. '''
 		try:
 			mpd_channel.connect("localhost", 6600)		# refresh the connection
@@ -59,10 +87,12 @@ class BBCradio:
 		self.logger.warning("Getting BBC stations loaded")
 		if self._refresh_pls_files():
 			return(1)
+		self.stationcount = 0
 		for i in self.urls:
 			self.logger.info("Opening the stream file: "+i[self.URLSTREAM])
 			try:
 				source=open(i[self.URLSTREAM],'r')
+				self.stationcount += 1
 				header = source.readline()				# this dumps first line of file
 				if header != '[playlist]\n':
 					print 'Invalid pls file contents:',t
@@ -72,11 +102,12 @@ class BBCradio:
 				source.readline()		# Title1=No Title
 				source.readline()		# Length1=-1
 				file2 = source.readline()
-				lines.append(file2)		# or, we could choose file1 - don't know difference
-				source.close()	
+				lines.append(file1)		# or, we could choose file1 - don't know difference
+				source.close()
+#				print lines				
 			except:
 				logging.warning("Could not open: "+i[self.URLSTREAM])
-				return(1)
+				return(-1)
 		for index, line in enumerate(lines):
 			try:
 				self.logger.info("Loading: "+line[6:])
@@ -84,7 +115,50 @@ class BBCradio:
 				mpd_channel.addid(line[6:].rstrip('\n'))
 			except:
 				self.logger.warning("Failed to add file to playlist: "+line[6:])
-				return(1)
+				return(-1)
+		self.logger.info('Loaded BBC stations.')
+		print 'Loaded BBC stations.'
+		return(0)
+		
+	def load(self, mpd_channel):
+		'''Load the stations stored in the urls array. Feb 2015 edition. '''
+		try:
+			mpd_channel.connect("localhost", 6600)		# refresh the connection
+		except:
+			pass		# it must be already connected
+		lines = []
+		self.logger.warning("Getting BBC stations loaded")
+		if self._new_refresh_pls_files():
+			return(1)
+		self.stationcount = 0
+		for i in self.newurls:
+			self.logger.info("Opening the stream file: "+i[self.URLSTREAM])
+			try:
+				source=open(i[self.URLSTREAM],'r')
+				self.stationcount += 1
+				header = source.readline()				# this dumps first line of file
+#				if header != '[Playlist]\n':
+#					print 'Invalid pls file contents:',header
+#					return(1)
+#				source.readline()		# NumberOfEntries=2
+				file1 = source.readline()
+				title = source.readline()		# Title1=No Title
+#				source.readline()		# Length1=-1
+#				file2 = source.readline()
+				lines.append(file1)		# or, we could choose file1 - don't know difference
+				source.close()
+				print lines				
+			except:
+				logging.warning("Could not open: "+i[self.URLSTREAM])
+				return(-1)
+		for index, line in enumerate(lines):
+			try:
+				self.logger.info("Loading: "+line[6:])
+				self._get_end_time(index, line[6:])
+				mpd_channel.addid(line[6:].rstrip('\n').rstrip('\r')) # extra \r to remove with new format
+			except:
+				self.logger.warning("Failed to add file to playlist: "+line[6:])
+				return(-1)
 		self.logger.info('Loaded BBC stations.')
 		print 'Loaded BBC stations.'
 		return(0)
@@ -157,5 +231,13 @@ if __name__ == "__main__":
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running bbcradio class as a standalone app")
 
-	myBBC = bbcradio()
-	myBBC._stationscanner()
+	myBBC = BBCradio()
+	
+	client = mpd.MPDClient()
+	client.timeout = 10 # seconds
+	client.idletimeout = None
+	client.connect("localhost", 6600)
+	client.clear()
+#	self.logger.info("python-mpd2 version:"+client.mpd_version)
+	myBBC.load(client)
+#	myBBC._stationscanner()

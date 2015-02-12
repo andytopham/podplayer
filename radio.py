@@ -6,7 +6,7 @@ import time, datetime, argparse, logging
 from gpio import Gpio
 
 LOGFILE = '/home/pi/podplayer/log/radio.log'
-VERSION = '4.0'
+VERSION = '5.1'
 
 def _setup_sockets():
 	'''For client/server operation. Not being used yet.'''

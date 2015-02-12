@@ -24,10 +24,18 @@ from mpc2 import Mpc
 from system import System
 
 # Using BCM numbering system...
+# Debug wifi versions
 NEXTSW = 17
 STOPSW = 18
 VOLUP = 21
 VOLDOWN = 22
+# Radio6 versions
+NEXTSW = 18
+STOPSW = 24
+VOLUP = 25
+VOLDOWN = 4
+PODMODESW = 22
+PREVSW = 17
 
 BUTTONNONE = 0
 BUTTONNEXT = 1
@@ -36,11 +44,13 @@ BUTTONVOLUP = 3
 BUTTONVOLDOWN = 4
 BUTTONMODE = 5
 BUTTONREBOOT = 6
-PRESSED = False
+BUTTONHALT = 7
+PRESSED = True
 UPDATEOLEDFLAG = 1
 UPDATETEMPERATUREFLAG = 2
 UPDATESTATIONFLAG = 3
 AUDIOTIMEOUTFLAG = 4
+VOLUMETIMEOUTFLAG = 5
 
 class Gpio:
 	'''A class containing ways to handle the RPi gpio. '''
@@ -53,11 +63,14 @@ class Gpio:
 		self.stop = 0
 		self.vol = 0
 		self.pod = 0
+		self.chgvol_flag = 0
 		self.setup()
 		self.setupcallbacks()
 
 	def startup(self, verbosity):
+		'''Initialisation for the objects that have variable startup behaviour'''
 		self.myInfoDisplay = infodisplay.InfoDisplay()
+		self.myInfoDisplay.writerow(1, 'Starting up...   ')
 		self.myMpc = Mpc()
 		self.mySystem = System()
 		self.myTimeout = timeout.Timeout(verbosity)
@@ -66,11 +79,13 @@ class Gpio:
 		self.myInfoDisplay.update_row2(False, remaining)
 	
 	def master_loop(self):
+		'''Continuously cycle through all the possible events.'''
 		while True:
 			# regular events first
 			try:
 				time.sleep(.2)
-				self.myInfoDisplay.scroll(self.programmename)
+				if self.chgvol_flag == 0:		# do not scroll the volume bar
+					self.myInfoDisplay.scroll(self.programmename)
 				self.process_timeouts()
 				reboot = self.process_button_presses()
 				if reboot == 1:
@@ -79,76 +94,127 @@ class Gpio:
 			except KeyboardInterrupt:
 				print 'Keyboard interrupt'
 				self.logger.warning('Keyboard interrupt')
-				self.myInfoDisplay.writerow(1,'Keyboard stop.  ')
+				self.myInfoDisplay.writerow(1,'Keyboard stop.      ')
 				self.myMpc.stop()
 				GPIO.cleanup()
 				return(1)
 			except:			# all other errors - should never get here
-				print 'Unknown error'
+				print 'Unknown error in master loop'
 				self.myInfoDisplay.writerow(1,'Master loop err.')
 				self.logger.error('Unknown error in master loop.')
 				self.myMpc.stop()
 				GPIO.cleanup()
 				return(1)
-				
+			
 	def process_timeouts(self):
 		'''Cases for each of the timeout types.'''
-		timeout_type = self.myTimeout.checktimeouts()
-		if timeout_type == 0:
-			return(0)
-		if timeout_type == UPDATEOLEDFLAG:
-#			remaining = self.myTimeout.get_time_remaining()
-			remaining = self.myMpc.check_time_left()
-			self.myInfoDisplay.update_row2(False, remaining)	# this has to be here to update time
-		if timeout_type == UPDATETEMPERATUREFLAG:
-			self.myInfoDisplay.update_row2(True)
-		if timeout_type == UPDATESTATIONFLAG:
-			# handle the bbc links going stale
-			if self.myMpc.loadbbc():			# failed
-				time.sleep(1)					# wait to try again
-				if self.myMpc.loadbbc():		# failed again
-					return(1)
-			self.myMpc.recover_playing()
-			if self.mySystem.disk_usage():
-				self.myInfoDisplay.writerow(1, 'Out of disk.')
-				sys.exit()
-			else:
+		try:
+			self.chk_volume_timeout()
+			timeout_type = self.myTimeout.checktimeouts()
+			if timeout_type == 0:
 				return(0)
-		if timeout_type == AUDIOTIMEOUTFLAG:
-			self.myMpc.audioTimeout()
-			self.programmename = '    Timeout     '
+			if timeout_type == VOLUMETIMEOUTFLAG:
+				self.programmename = self.temp_progname
+			if timeout_type == UPDATEOLEDFLAG:
+	#			remaining = self.myTimeout.get_time_remaining()
+				remaining = self.myMpc.check_time_left()
+				self.myInfoDisplay.update_row2(False, remaining)	# this has to be here to update time
+				self.programmename = self.myMpc.progname()
+			if timeout_type == UPDATETEMPERATUREFLAG:
+				self.myInfoDisplay.update_row2(True, remaining)
+			if timeout_type == UPDATESTATIONFLAG:
+				# handle the bbc links going stale
+				if self.myMpc.loadbbc():			# failed
+					time.sleep(1)					# wait to try again
+					if self.myMpc.loadbbc():		# failed again
+						return(1)
+				self.myMpc.recover_playing()
+				if self.mySystem.disk_usage():
+					self.myInfoDisplay.writerow(1, 'Out of disk.')
+					sys.exit()
+				else:
+					return(0)
+			if timeout_type == AUDIOTIMEOUTFLAG:
+				self.myMpc.audioTimeout()
+				self.programmename = '    Timeout     '
+		except:
+			self.logger.warning('Error in process_timeouts. Timeout type:'+str(timeout_type))
+			return(1)
 		return(0)
 
+	def chk_volume_timeout(self):
+		'''Poll to see if the volume bar timeout has happened.'''
+		if self.chgvol_flag == 1:
+			try:
+				if self.myTimeout.check_volume_timeout():
+					self.chgvol_flag = 0
+					self.programmename = self.temp_progname
+			except:
+				self.logger.info('Error in volume timeout handling')
+		return(0)
+		
 	def process_button_presses(self):
-		'''Cases for each of the button presses and return the new prog name.'''
-		button = self.processbuttons()
-		if button == 0:
-			return(0)
-		else:
-			self.myTimeout.resetAudioTimeout()
-			if button == BUTTONMODE:
-				self.myMpc.switchmode()
-			elif button == BUTTONNEXT:
-				if self.myMpc.next() == -1:
-					return('No pods left!')
-			elif button == BUTTONSTOP:
-				self.myMpc.toggle()
-			elif button == BUTTONREBOOT:
-				print 'Rebooting...'
-				self.myMpc.stop()
-				self.myInfoDisplay.writerow(1, 'Rebooting...     ')
-				time.sleep(2)
-				p = subprocess.call(['reboot'])
-				return(1)
-			elif button == BUTTONVOLUP:
-				self.myMpc.chgvol(+1)
-			elif button == BUTTONVOLDOWN:
-				self.myMpc.chgvol(-1)
-			self.programmename = self.myMpc.progname()
-			return(0)
+		'''Poll for each of the button presses and return the new prog name.'''
+		try:
+			button = self.processbuttons()
+			if button == 0:
+				return(0)
+			else:
+				self.programmename = self.myMpc.progname()
+				self.myTimeout.resetAudioTimeout()
+				if button == BUTTONMODE:
+					self.myMpc.switchmode()
+				elif button == BUTTONNEXT:
+					if self.myMpc.next() == -1:
+						return('No pods left!')
+					self.programmename = self.myMpc.progname()
+				elif button == BUTTONSTOP:
+					self.myMpc.toggle()
+					self.programmename = self.myMpc.progname()
+				elif button == BUTTONREBOOT:
+					print 'Rebooting...'
+					self.myMpc.stop()
+					self.myInfoDisplay.writerow(1, 'Rebooting...     ')
+					time.sleep(2)
+					p = subprocess.call(['reboot'])
+					return(1)
+				elif button == BUTTONHALT:
+					print 'Halting...'
+					self.myMpc.stop()
+					self.myInfoDisplay.writerow(1, 'Halting...      ')
+					time.sleep(2)
+					p = subprocess.call(['halt'])
+					return(1)
+				elif button == BUTTONVOLUP:
+					v = self.myMpc.chgvol(+1)
+					self.show_vol_bar(v)
+				elif button == BUTTONVOLDOWN:
+					v = self.myMpc.chgvol(-1)
+					self.show_vol_bar(v)
+		except:
+			self.logger.warning('Error in process_button_presses: Value='+str(button))
+			return(-1)
+		return(0)
 	
+	def show_vol_bar(self, volume):
+		'''Draw the volume bar on the display.'''
+		self.logger.info('vol bar '+str(volume))
+		self.chgvol_flag = 1
+		try:
+			self.myTimeout.setVolumeTimeout()
+			self.temp_progname = self.programmename
+			self.programmename = ''
+			for i in range(0, int(volume), 5):		# add a char every 5%
+				self.programmename += ">"
+			self.programmename += "      "
+			self.myInfoDisplay.displayvol(self.programmename)
+		except:
+			print ' trouble at t mill'
+		return(0)
+		
 	def setup(self):
-		self.logger.debug("def gpio setup")
+		'''Setup the gpio port.'''
+		self.logger.info("def gpio setup")
 		rev = GPIO.RPI_REVISION
 		print 'RPi board revision: ',rev
 		self.logger.info("RPi board revision:"+str(rev)
@@ -192,7 +258,7 @@ class Gpio:
 		for button presses. Callbacks are run in a parallel process.'''
 		self.logger.info("Using callbacks")
 #		BOUNCETIME=100
-		BOUNCETIME=200
+		BOUNCETIME=300
 		if PRESSED == True:
 			GPIO.add_event_detect(NEXTSW, GPIO.RISING, callback=self.pressednext, bouncetime=BOUNCETIME)
 			GPIO.add_event_detect(STOPSW, GPIO.RISING, callback=self.pressedstop, bouncetime=BOUNCETIME)
@@ -205,8 +271,7 @@ class Gpio:
 			GPIO.add_event_detect(VOLDOWN, GPIO.FALLING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)	
 		
 	def checkforstuckswitches(self):
-		'''Run at power on to check that the switches are not stuck in one state.
-			If this fails, then the calling program needs to exit.'''
+		'''Check that the gpio switches are not stuck in one state.'''
 		self.logger.debug("def gpio checkforstuckswitches")
 		in17 = GPIO.input(NEXTSW)
 		if in17 == self.PRESSED:
@@ -275,8 +340,9 @@ class Gpio:
 			return(True)
 		return(False)
 		
-	def processbuttons(self):
-		'''Called by the main program. Expects callback processes to have
+	def _old_processbuttons(self):
+		'''Not used anymore ***
+		Called by the main program. Expects callback processes to have
 			already set the Next and Stop states.'''
 		#self.logger.debug("def gpio processbuttons")
 		button=0
@@ -290,43 +356,55 @@ class Gpio:
 				self.next = 0					# clear down the button press
 				button = BUTTONMODE			
 		if self.stop == 1:
-			if self.is_stop_held_down(1) == 0:
+			if self.is_stop_held_down(.5) == 0:
 				self.logger.info("Button pressed stop")
 				self.stop = 0
 				button = BUTTONSTOP
 			else:								# button still held down
-				self.logger.warning("Button pressed reboot")
-				self.stop = 0					# clear down the button press
-				button = BUTTONREBOOT
+				if True:
+					self.logger.warning("Button pressed halt")
+					self.stop = 0					# clear down the button press
+					button = BUTTONHALT
+				else:
+					self.logger.warning("Button pressed reboot")
+					self.stop = 0					# clear down the button press
+					button = BUTTONREBOOT
 		if self.vol == 1:
 			self.logger.info("Button pressed vol up")
 			self.vol=0
-			if self.is_volup_held_down(.1):
-				button = BUTTONVOLUP
+#			if self.is_volup_held_down(.01):
+			button = BUTTONVOLUP
 		if self.vol == -1:
 			self.logger.info("Button pressed vol down")
 			self.vol=0
-			if self.is_voldown_held_down(.1):
+			if self.is_voldown_held_down(.01):
 				button = BUTTONVOLDOWN
 		return(button)
-
-	def stopled(self,state):
-		'''Test routine. Just changes led state based on button state. '''
-		self.logger.info("Stop Led:"+str(state))
-		if state == 0:
-			GPIO.output(self.YELLOWLED, GPIO.HIGH)
-		else:
-			GPIO.output(self.YELLOWLED, GPIO.LOW)
 		
-	def nextled(self,state):
-		'''Test routine. Just changes led state based on button state. '''
-		self.logger.info("Next Led:"+str(state))
-		if state == 0:
-			GPIO.output(self.REDLED, GPIO.HIGH)
-		else:
-			GPIO.output(self.REDLED, GPIO.LOW)
+	def processbuttons(self):
+		'''Called by the main program. Expects callback processes to have
+			already set the Next and Stop states.'''
+		button=0
+		if self.next == 1:
+			self.logger.info("Button pressed next")
+			self.next = 0
+			button = BUTTONNEXT
+		if self.stop == 1:
+			self.logger.info("Button pressed stop")
+			self.stop = 0
+			button = BUTTONSTOP
+		if self.vol == 1:
+			self.logger.info("Button pressed vol up")
+			self.vol=0
+			button = BUTTONVOLUP
+		if self.vol == -1:
+			self.logger.info("Button pressed vol down")
+			self.vol=0
+			button = BUTTONVOLDOWN
+#		self.logger.info("processbuttons: "+str(button))
+		return(button)
 			
-	def cleanup(self):
+	def _cleanup(self):
 		'''Not currently called. Should be called to tidily shutdown the gpio. '''
 		# frees up the ports for another prog to use without warnings.
 		GPIO.cleanup()

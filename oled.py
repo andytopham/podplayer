@@ -3,7 +3,6 @@
   Updated to work with both 16x2 and 20x4 versions.
   Requires new picaxe fw that inverts serial polarity, i.e. N2400 -> T2400.
   The oled modules work fine off the RPi 3v3, which avoids the need for level shifting.
-  Imported by iradio.
   Requires the installation of the python serial module. Install by:
 	sudo apt-get install python-serial
     edit /boot/cmdline.txt to remove all refs to console=ttyAMA0... and kgdboc=ttyAMA0...
@@ -51,7 +50,11 @@ class Oled:
 		self.writerow(3,'                    ')
 		self.writerow(4,'                    ')
 		return(0)
-	
+
+	def numberofrows(self):
+		''' Just returns the number of rows in the display for use by other routines.'''
+		return(self.rowcount)
+		
 	def cleardisplay(self):
 		self.port.write(chr(254))		# cmd
 		self.port.write(chr(1))			# clear display
@@ -71,7 +74,7 @@ class Oled:
 			startpoint=0
 		else:
 			startpoint = self.start-pauseCycles
-		self.writerow(1,string[startpoint:])
+		self.writerow(1,string[startpoint:startpoint+self.rowlength])
 		self.port.write(" ")			# to get rid of spare trailing char
 		return(0)
 	

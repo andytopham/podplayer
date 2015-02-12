@@ -1,32 +1,32 @@
 #!/bin/sh
-echo "** radio installer **"
-echo "apt-get update"
+echo "** podplayer installer **"
+echo 'This will take a long time to run - time to grab a coffee (or even dinner).'
+echo "apt-get installs"
 apt-get update
-echo
-echo "apt-get -y upgrade"
 apt-get -y upgrade
-echo
-echo "apt-get -y install python-pip"
 apt-get -y install python-pip
-echo
+apt-get -y install python-serial mpd mpc rpi.gpio	
 echo 'pip installs...'
-pip install beautifulsoup4 requests python-mpd2 logging feedparser urllib3
-echo
-echo "apt-get -y install python-serial"
-apt-get -y install python-serial mpd mpc	
+pip install beautifulsoup4
+pip install requests
+pip install python-mpd2
+pip install logging
+pip install feedparser
+pip install urllib3
+echo 'configure system files'
 cp mpd.conf /etc
 cp startradio /etc/init.d
 chmod 755 /etc/init.d/startradio
 update-rc.d startradio defaults
 cp sampleconfig.py config.py
-echo
+chmod 666 config.py
 echo 'Setting up wifi'
 cp /etc/network/interfaces /etc/network/interfaces.bak
 cp interfaces /etc/network
 echo 'Fixing serial garbage.'
 cp /boot/cmdline.txt /boot/cmdline.bak
 cp cmdline.txt /boot
-echo
+echo 'Setting up runtime environment'
 chmod +x radio.py
 mkdir log
 echo '*************************'
