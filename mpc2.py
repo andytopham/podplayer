@@ -50,10 +50,18 @@ class Mpc:
 		self.client.clear()
 		self.logger.info("python-mpd2 version:"+self.client.mpd_version)
 		self.updatedb()						# just run this occasionally
-#		self.play()
 		print 'mpd connected'
 		return(0)
-	
+		
+	def next_station(self):
+		no_of_stations = self.myBBC.stationcounter()
+		self.logger.info("Show next radio station: "+str(self.station+1)+" out of "+str(no_of_stations))
+		number = self.station + 1
+		if number > no_of_stations - 1:
+			number = 0
+		line = self.myBBC.newurls[number]
+		return(line[0])
+		
 	def check_time_left(self):
 		mins_left = self.myBBC.check_time_left(self.station)
 		if mins_left < RENEWALTIME:

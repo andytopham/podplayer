@@ -22,6 +22,7 @@ import time, datetime, logging, subprocess
 import timeout, infodisplay
 from mpc2 import Mpc
 from system import System
+import config			# needed for the number of oled rows
 
 # Using BCM numbering system...
 # Debug wifi versions
@@ -51,6 +52,7 @@ UPDATETEMPERATUREFLAG = 2
 UPDATESTATIONFLAG = 3
 AUDIOTIMEOUTFLAG = 4
 VOLUMETIMEOUTFLAG = 5
+DISPLAYTIMEOUTFLAG = 6
 
 class Gpio:
 	'''A class containing ways to handle the RPi gpio. '''
@@ -66,24 +68,28 @@ class Gpio:
 		self.chgvol_flag = 0
 		self.setup()
 		self.setupcallbacks()
+		self.maxelapsed = 0
+		self.button_pressed_time = datetime.datetime.now()
 
 	def startup(self, verbosity):
 		'''Initialisation for the objects that have variable startup behaviour'''
-		self.myInfoDisplay = infodisplay.InfoDisplay()
-		self.myInfoDisplay.writerow(1, 'Starting up...   ')
+		self.myInfoDisplay = infodisplay.InfoDisplay(config.numberofrows)
 		self.myMpc = Mpc()
 		self.mySystem = System()
 		self.myTimeout = timeout.Timeout(verbosity)
 		self.programmename = self.myMpc.progname()
 		remaining = self.myMpc.check_time_left()
 		self.myInfoDisplay.update_row2(False, remaining)
+		self.show_next_station()
 	
 	def master_loop(self):
 		'''Continuously cycle through all the possible events.'''
+		self.lasttime = time.time()		# has to be here to avoid long initial delay showing.
 		while True:
 			# regular events first
+			self.show_time_taken()
 			try:
-				time.sleep(.2)
+				time.sleep(.2)			# keep this inside try so that ctrl-c works here.		
 				if self.chgvol_flag == 0:		# do not scroll the volume bar
 					self.myInfoDisplay.scroll(self.programmename)
 				self.process_timeouts()
@@ -105,7 +111,23 @@ class Gpio:
 				self.myMpc.stop()
 				GPIO.cleanup()
 				return(1)
-			
+
+	def show_time_taken(self):
+		now = time.time()
+		elapsed = now - self.lasttime
+		if config.numberofrows > 2:
+			self.myInfoDisplay.update_row3(elapsed,self.maxelapsed)
+			if elapsed > self.maxelapsed:
+				self.maxelapsed = elapsed
+		self.lasttime = now
+		return(0)
+	
+	def show_next_station(self):
+		prog = self.myMpc.next_station()
+		if config.numberofrows > 2:
+			self.myInfoDisplay.update_row4(prog)
+		return(0)
+	
 	def process_timeouts(self):
 		'''Cases for each of the timeout types.'''
 		try:
@@ -137,6 +159,8 @@ class Gpio:
 			if timeout_type == AUDIOTIMEOUTFLAG:
 				self.myMpc.audioTimeout()
 				self.programmename = '    Timeout     '
+			if timeout_type == DISPLAYTIMEOUTFLAG:
+				self.myInfoDisplay.update_whole_display()
 		except:
 			self.logger.warning('Error in process_timeouts. Timeout type:'+str(timeout_type))
 			return(1)
@@ -168,6 +192,7 @@ class Gpio:
 					if self.myMpc.next() == -1:
 						return('No pods left!')
 					self.programmename = self.myMpc.progname()
+					self.show_next_station()
 				elif button == BUTTONSTOP:
 					self.myMpc.toggle()
 					self.programmename = self.myMpc.progname()
@@ -231,24 +256,28 @@ class Gpio:
 	def pressednext(self,channel):
 		'''Minimally manage the callback that is triggered when the Next button is pressed.'''
 		self.logger.info("Button pressed next, Channel:"+str(channel))
+		self.myTimeout.last_button_time()
 		self.next = 1
 		return(0)
 		
 	def pressedstop(self,channel):
 		'''Minimally manage the callback that is triggered when the Stop button is pressed.'''
 		self.logger.info("Button pressed stop, Channel:"+str(channel))
+		self.myTimeout.last_button_time()
 		self.stop = 1
 		return(0)
 
 	def pressedvolup(self,channel):
 		'''Minimally manage the callback that is triggered when the volup button is pressed.'''
 		self.logger.info("Button pressed volup, Channel:"+str(channel))
+		self.myTimeout.last_button_time()
 		self.vol = 1
 		return(0)
 
 	def pressedvoldown(self,channel):
 		'''Minimally manage the callback that is triggered when the voldown button is pressed.'''
 		self.logger.info("Button pressed voldown, Channel:"+str(channel))
+		self.myTimeout.last_button_time()
 		self.vol = -1
 		return(0)
 		

@@ -33,8 +33,6 @@ class Oled:
 			self.rowlength = 16
 		else:
 			self.rowlength = 20
-#		self.rowlength = config.rowlength
-#		self.rowcount = config.rowcount
 		self.rowselect = [128,192,148,212]	# the addresses of the start of each row
 		self.start=0
 		self.initialise()
@@ -68,6 +66,7 @@ class Oled:
 	def scroll(self,string):
 		pauseCycles=5
 		self.start += 1
+		string = string + ' '			# add a trailing blank to erase as we scroll
 		if self.start > len(string):	# finished scrolling this string, reset.
 			self.start = 0
 		if self.start < pauseCycles:	# only start scrolling after 8 cycles.
@@ -75,7 +74,6 @@ class Oled:
 		else:
 			startpoint = self.start-pauseCycles
 		self.writerow(1,string[startpoint:startpoint+self.rowlength])
-		self.port.write(" ")			# to get rid of spare trailing char
 		return(0)
 	
 	def screensave(self):

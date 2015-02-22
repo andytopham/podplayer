@@ -137,17 +137,10 @@ class BBCradio:
 				source=open(i[self.URLSTREAM],'r')
 				self.stationcount += 1
 				header = source.readline()				# this dumps first line of file
-#				if header != '[Playlist]\n':
-#					print 'Invalid pls file contents:',header
-#					return(1)
-#				source.readline()		# NumberOfEntries=2
 				file1 = source.readline()
 				title = source.readline()		# Title1=No Title
-#				source.readline()		# Length1=-1
-#				file2 = source.readline()
 				lines.append(file1)		# or, we could choose file1 - don't know difference
 				source.close()
-				print lines				
 			except:
 				logging.warning("Could not open: "+i[self.URLSTREAM])
 				return(-1)

@@ -9,12 +9,15 @@ TEMPERATURETIMEOUT = 15
 STATIONTIMEOUT = 240
 AUDIOTIMEOUT = 30
 VOLUMETIMEOUT = 4		# seconds
+DISPLAYTIMEOUT = 10
+
 # verbose ones
 VOLEDTIMEOUT = 1
 VTEMPERATURETIMEOUT = 15
 VSTATIONTIMEOUT = 240
 VAUDIOTIMEOUT = 30
 VVOLUMETIMEOUT = 4		# seconds
+VDISPLAYTIMEOUT = 2
 
 # Timeout flags
 UPDATEOLEDFLAG = 1
@@ -22,6 +25,7 @@ UPDATETEMPERATUREFLAG = 2
 UPDATESTATIONFLAG = 3
 AUDIOTIMEOUTFLAG = 4
 VOLUMETIMEOUTFLAG = 5
+DISPLAYTIMEOUTFLAG = 6
 
 class Timeout:
 	def __init__(self, verbose=0):
@@ -37,6 +41,7 @@ class Timeout:
 			self.stationupdatefreq = datetime.timedelta(minutes=VSTATIONTIMEOUT)	# a wild guess at how often the bbc change the key
 			self.audiotimeoutfreq = datetime.timedelta(minutes=VAUDIOTIMEOUT)
 			self.volumetimeoutfreq = datetime.timedelta(seconds=VVOLUMETIMEOUT)
+			self.displaytimeoutfreq = datetime.timedelta(seconds=DISPLAYTIMEOUT)
 		else:
 			self.logger.info('Timeouts(mins): OLED='+str(OLEDTIMEOUT)
 				+' Temperature='+str(TEMPERATURETIMEOUT)
@@ -47,6 +52,7 @@ class Timeout:
 			self.stationupdatefreq = datetime.timedelta(minutes=STATIONTIMEOUT)	# a wild guess at how often the bbc change the key
 			self.audiotimeoutfreq = datetime.timedelta(minutes=AUDIOTIMEOUT)
 			self.volumetimeoutfreq = datetime.timedelta(seconds=VOLUMETIMEOUT)
+			self.displaytimeoutfreq = datetime.timedelta(seconds=DISPLAYTIMEOUT)
 		#initialise timers
 		self.start = datetime.datetime.now()
 		self.oledlastupdate = datetime.datetime.now()
@@ -55,6 +61,7 @@ class Timeout:
 		self.audiostart = datetime.datetime.now()
 		self.volumestart = datetime.datetime.now()
 		self.verbosity = verbose
+		self.button_time = datetime.datetime.now()
 
 	def checktimeouts(self):
 		now = datetime.datetime.now()
@@ -75,6 +82,10 @@ class Timeout:
 								+datetime.datetime.now().strftime('%H:%M'))
 			self.audiostart = datetime.datetime.now()
 			return(AUDIOTIMEOUTFLAG)
+		if (now - self.button_time) > self.displaytimeoutfreq:
+			self.logger.info('Timeout: button press display')
+#			self.recover_display()
+			return(DISPLAYTIMEOUTFLAG)
 		return(0)
 		
 	def resetAudioTimeout(self):
@@ -90,7 +101,6 @@ class Timeout:
 		if (now - self.volumestart) > self.volumetimeoutfreq:
 			self.logger.info('Volume bar timeout')
 			self.volumestart = datetime.datetime.now()
-#			return(VOLUMETIMEOUTFLAG)
 			return(1)
 		return(0)
 		
@@ -107,3 +117,7 @@ class Timeout:
 #		self.logger.info('Time remaining: '+str(mins)+' minutes')
 		return(mins)
 		
+	def last_button_time(self):
+		'''Record the time the last button was pressed. Used for display timeout.'''
+		self.button_time = datetime.datetime.now()
+		return(0)
