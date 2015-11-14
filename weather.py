@@ -16,7 +16,7 @@ class Weather:
 		self.logger.debug("Fetching temperature")
 		try:
 			string = 'http://open.live.bbc.co.uk/weather/feeds/en/'+bbckey+'/observations.rss'
-			soup = BeautifulSoup(requests.get(string).text)
+			soup = BeautifulSoup(requests.get(string).text,"html.parser")
 		except HTTPError, e:
 			self.logger.error('Failed to fetch temperature')
 			temperature = 0

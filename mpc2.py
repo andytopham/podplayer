@@ -38,7 +38,7 @@ class Mpc:
 			self.logger.error('No BBC stations loaded.')
 			print '**Error: No BBC stations loaded. **'
 		self.updatedb()						# just run this occasionally
-		self.setvol(50)
+		self.setvol(70)
 		self.play()
 
 	def _start_mpd(self):
@@ -61,6 +61,9 @@ class Mpc:
 			number = 0
 		line = self.myBBC.newurls[number]
 		return(line[0])
+		
+	def this_station(self):
+		return(self.myBBC.newurls[self.station][0])
 		
 	def check_time_left(self):
 		mins_left = self.myBBC.check_time_left(self.station)
@@ -194,9 +197,9 @@ class Mpc:
 		
 	def play(self):
 		"""Send the play signal to mpc."""
-		self.logger.info("Play: setting play.")
+#		self.logger.info("Play: setting play.")
 		if self.podmode == False:
-			self.logger.info("Selected station: "+str(self.station))
+#			self.logger.info("Selected station: "+str(self.station))
 			try:
 				self.client.play(self.station)
 			except mpd.ConnectionError:
@@ -337,13 +340,14 @@ class Mpc:
 			self.client.play(self.podnumber)
 			return(self.podnumber)
 		else:						# its radio mode
-			self.logger.info("Next radio station: moving to "+str(self.station+1)+" out of "+str(self.myBBC.stationcounter()))
+#			self.logger.info("Next radio station: moving to "+str(self.station+1)+" out of "+str(self.myBBC.stationcounter()))
 			self.station = self.station + 1
 #			print "Next: station="+str(self.station)
 #			print "Count="+str(self.myBBC.stationcounter()+1)
 			if self.station > self.myBBC.stationcounter()-1:
 				self.station = 0
-			self.play()
+			self.client.play(self.station)
+#			self.play()
 			return(self.station)
 		
 	def progname(self):

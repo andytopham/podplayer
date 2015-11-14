@@ -38,7 +38,7 @@ class Oled:
 		self.initialise()
 	
 	def initialise(self):
-		self.port.open()
+#		self.port.open()
 		self.logger.info("Opened serial port")
 		self.port.write(chr(254))		# cmd
 		self.port.write(chr(1))			# clear display
@@ -61,19 +61,40 @@ class Oled:
 	def writerow(self,row,string):
 		self.port.write(chr(254))		# cmd
 		self.port.write(chr(self.rowselect[row-1]))	# move to start of row
-		self.port.write(string[0:self.rowlength])
+		self.port.write(string[0:self.rowlength].ljust(self.rowlength))
 		
 	def scroll(self,string):
-		pauseCycles=5
-		self.start += 1
-		string = string + ' '			# add a trailing blank to erase as we scroll
-		if self.start > len(string):	# finished scrolling this string, reset.
-			self.start = 0
-		if self.start < pauseCycles:	# only start scrolling after 8 cycles.
-			startpoint=0
-		else:
-			startpoint = self.start-pauseCycles
-		self.writerow(1,string[startpoint:startpoint+self.rowlength])
+		if self.rowcount > 2:
+			self.writerow(1,string[0:20])
+			self.writerow(2,string[20:40].ljust(20))	# pad out the missing chars with spaces
+			self.writerow(3,string[40:60].ljust(20))	# pad out the missing chars with spaces
+#			pauseCycles=5
+#			self.start += 1
+#			string = string + ' '			# add a trailing blank to erase as we scroll
+#			if self.start > len(string):	# finished scrolling this string, reset.
+#				self.start = 0
+#			if self.start < pauseCycles:	# only start scrolling after 8 cycles.
+#				startpoint=0
+#			else:
+#				startpoint = self.start-pauseCycles
+#			if len(string[40:]) > 21 :		# so it needs scrolling
+#			if False:						# temporary to stop the scrolling
+#				print "String:",string[40:]
+#				print "Startpoint:",startpoint
+#				self.writerow(3,string[40+startpoint:60+startpoint])
+#			else:
+#				self.writerow(3,string[40:60].ljust(20))	# pad out the missing chars with spaces
+		else:								# only 2 rows
+			pauseCycles=5
+			self.start += 1
+			string = string + ' '			# add a trailing blank to erase as we scroll
+			if self.start > len(string):	# finished scrolling this string, reset.
+				self.start = 0
+			if self.start < pauseCycles:	# only start scrolling after 8 cycles.
+				startpoint=0
+			else:
+				startpoint = self.start-pauseCycles
+			self.writerow(1,string[startpoint:startpoint+self.rowlength])
 		return(0)
 	
 	def screensave(self):

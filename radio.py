@@ -6,12 +6,12 @@ import time, datetime, argparse, logging
 from gpio import Gpio
 
 LOGFILE = '/home/pi/podplayer/log/radio.log'
-VERSION = '5.1'
+VERSION = '5.2'
 
 def _setup_sockets():
 	'''For client/server operation. Not being used yet.'''
 	# Enable server and remote client
-	MySocket = comms.comms()
+	MySocket = comms.Comms()
 	if config.master == True:
 		print "I am a server"
 		slave = MySocket.registerserversetup()

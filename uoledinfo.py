@@ -1,28 +1,31 @@
 #!/usr/bin/python
-''' Richer Oled information.'''
+''' Micro Oled support.
+	Richer Oled information.
+	In podplayer, this replaces infodisplay.py
+	'''
 import subprocess, time, logging, datetime
+from uoled import Oled
 from weather import Weather
 import config
-if config.uoled == True:
-	from uoled import Oled
-else:
-	from oled import Oled
 
 class InfoDisplay(Oled):
 	'''	Richer info on the oled. '''
-	def __init__(self,rowcount=2):
+	def __init__(self,rowcount=4):
 		self.logger = logging.getLogger(__name__)
 		Oled.__init__(self, rowcount)		# We are a subclass, so need to be explicit about which init
 		if rowcount == 2:
 			self.rowlength = 16
 		else:
 			self.rowlength = 20
-#		self.writerow(1, 'Starting up...   ')
+		self.update_row1('Starting up...   ')
 		self.myWeather = Weather()
 		self.update_row2(1)
 		self.lasttime = 0
 		self.delta = 0.001
-	
+		
+	def update_row1(self, string):
+		self.writerow(1, string)
+		
 	def update_row2(self, temperature_refresh_needed=False, time_remaining=0):
 		'''Time and temperature display on the info line - not necessarily row 2!'''
 		if self.rowlength == 16:
@@ -56,9 +59,8 @@ class InfoDisplay(Oled):
 	def proginfo(self,string):
 		self.logger.info('proginfo:'+string)
 		if self.rowlength == 20:
-			self.writerow(1,string[0:20])
-			self.writerow(2,string[20:40])
-			self.writerow(3,'{0: <20}'.format(string[40:60]))
+			self.writerow(2,string[0:20])
+			self.writerow(3,string[20:40])
 		else:
 			self.writerow(1,'{0:16.16}'.format(string))
 		
@@ -85,8 +87,5 @@ class InfoDisplay(Oled):
 		self.update_row2()
 		self.update_row3()
 		self.update_row4()
-		return(0)
-		
-	def scroll(self, string):
 		return(0)
 		

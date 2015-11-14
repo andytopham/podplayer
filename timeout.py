@@ -3,13 +3,13 @@
 
 import time, datetime, logging
 
-# Timeout values, all in minutes
+# Timeout values, all in minutes except where stated
 OLEDTIMEOUT = 1
 TEMPERATURETIMEOUT = 15
 STATIONTIMEOUT = 240
 AUDIOTIMEOUT = 30
 VOLUMETIMEOUT = 4		# seconds
-DISPLAYTIMEOUT = 10
+DISPLAYTIMEOUT = 120		# seconds
 
 # verbose ones
 VOLEDTIMEOUT = 1
@@ -17,7 +17,7 @@ VTEMPERATURETIMEOUT = 15
 VSTATIONTIMEOUT = 240
 VAUDIOTIMEOUT = 30
 VVOLUMETIMEOUT = 4		# seconds
-VDISPLAYTIMEOUT = 2
+VDISPLAYTIMEOUT = 20
 
 # Timeout flags
 UPDATEOLEDFLAG = 1
@@ -84,6 +84,7 @@ class Timeout:
 			return(AUDIOTIMEOUTFLAG)
 		if (now - self.button_time) > self.displaytimeoutfreq:
 			self.logger.info('Timeout: button press display')
+			self.button_time = datetime.datetime.now()
 #			self.recover_display()
 			return(DISPLAYTIMEOUTFLAG)
 		return(0)

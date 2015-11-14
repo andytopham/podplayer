@@ -17,13 +17,13 @@ class BBCradio:
 	urls = [["BBCR2",	"r2_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_two" ],
 			["BBCR4",	"r4_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four" ],
 			["BBCR4x",	"r4x_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four_extra"],
-			["BBCR5",	"r5l_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_five_live"],
+#			["BBCR5",	"r5l_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_five_live"],
 			["BBCR6",	"r6_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_6music"]
 			]
 	newurls = [["BBCR2",	"bbcradio2.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_two" ],
 			["BBCR4",		"bbcradio4fm.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four" ],
 			["BBCR4x",		"bbcradio4extra.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four_extra"],
-			["BBCR5",		"bbc5live.pls",		"http://www.bbc.co.uk/radio/player/bbc_radio_five_live"],
+#			["BBCR5",		"bbc5live.pls",		"http://www.bbc.co.uk/radio/player/bbc_radio_five_live"],
 			["BBCR6",		"bbc6music.pls",	"http://www.bbc.co.uk/radio/player/bbc_6music"]
 			]		
 	def __init__(self):
@@ -204,7 +204,7 @@ class BBCradio:
 		row = self.urls[station]
 		address = row[self.URLDETAILS]
 		try:
-			soup = BeautifulSoup(requests.get(address).text)
+			soup = BeautifulSoup(requests.get(address).text,"html.parser")
 		except requests.ConnectionError:
 			self.logger.error("Connection error getting prog info")
 			return("Connection error ")

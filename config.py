@@ -3,9 +3,10 @@
 
 # These next rows need completing manually locally
 key = ''
-locn = ''
+locn = 'UK/Stroud'
 bbckey = ''
-numberofrows=2
+numberofrows=4
+uoled = True
 
 # Using BCM numbering system...
 # Need to delete one section of the following.

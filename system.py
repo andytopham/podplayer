@@ -32,6 +32,9 @@ class System:
 			return(1)		
 		return(0)
 
+	def return_hostname(self):
+		return(subprocess.check_output(['hostname']))
+		
 if __name__ == "__main__":
 	'''Print disk usage.'''
 #	print "Running system class as a standalone app"

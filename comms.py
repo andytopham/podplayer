@@ -15,9 +15,10 @@ import logging
 import time
 import datetime
 import select		# used to wait for i/o completion
+import config
 MSGLEN = 5
 
-class comms:
+class Comms:
 	'''demonstration class only
 	  - coded for clarity, not efficiency
 	'''
@@ -27,7 +28,7 @@ class comms:
 			self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		else:
 			self.sock = sock
-		self.sock.settimeout(4.0)		# timeout seconds
+		self.sock.settimeout(200.0)		# timeout seconds
 		self.sock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.sock3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.port = 12346				# my random number
@@ -45,19 +46,21 @@ class comms:
 		host = ''							# symbolic name for all available interfaces
 		try:
 			self.sock.bind((host,self.port))
-			self.sock.listen(5)
-			conn,addr = self.sock.accept()
-			time.sleep(1)
-			data = conn.recv(1024)
-			self.sock.close()
-			print "Remote client:",addr[0]," registered"
-			print "Phase 1 complete"
+			self.sock.listen(1)
+			while True:
+				conn,addr = self.sock.accept()
+				print "Remote client:",addr[0]," registered"
+				time.sleep(1)
+				data = conn.recv(1024)
+				self.sock.close()
+				print 'Data: ',data
+#			print "Phase 1 complete"
 			return(addr[0])
 		except socket.timeout:
 			print "** Timeout - no clients tried to connect **"
 			return(0)
 			
-	def registerclient(self,serveraddress):
+	def registerclient(self,serveraddress,data):
 		'''This goes wtih registerserversetup. It is the client part. 
 		Used to send a msg to the server so that the server knows about us.''' 
 		host = serveraddress				# address of server
@@ -65,10 +68,10 @@ class comms:
 		self.sock.connect((host, self.port))
 #		self.connect(host,self.port)
 		print "Registering...",
-		self.sock.sendall("Register")
+		self.sock.sendall(data)
 		print "Sent"
-#		self.sock.close()
-		print "Phase 1 complete"
+		self.sock.close()
+#		print "Phase 1 complete"
 		return(0)
 
 	# Phase 2 of the protocol
@@ -168,7 +171,6 @@ class comms:
 	
 		
 if __name__ == "__main__":
-	import config
 	
 	'''Called if this file is called standalone. Then just runs a selftest. '''
 	print "Running socket class as a standalone app"
@@ -179,14 +181,14 @@ if __name__ == "__main__":
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running socket class as a standalone app")
 
 	# This demo just does a handshake back and forwards.
-	mySocket = comms()
+	mySocket = Comms()
 	if config.master == True:
 		print "I am a server"
 		slave = mySocket.registerserversetup()
-		time.sleep(2)
-		mySocket.sendcmd(slave,"Comms prog test string")
+#		time.sleep(2)
+#		mySocket.sendcmd(slave,"Comms prog test string")
 	else:
 		print "I am a client"
-		mySocket.registerclient()
-		mySocket.setuplistener()
+		mySocket.registerclient('192.168.1.149','22.2')
+#		mySocket.setuplistener()
 		

@@ -1,3 +1,8 @@
 #!/bin/sh
+# Routine to autostart the radio app.
+# To be placed in /etc/init.d
+
+# This sleep is needed to the pi2, since network does not seem to be ready.
+sleep 10
 python /home/pi/podplayer/radio.py &
 

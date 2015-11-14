@@ -24,20 +24,6 @@ from mpc2 import Mpc
 from system import System
 import config			# needed for the number of oled rows
 
-# Using BCM numbering system...
-# Debug wifi versions
-NEXTSW = 17
-STOPSW = 18
-VOLUP = 21
-VOLDOWN = 22
-# Radio6 versions
-NEXTSW = 18
-STOPSW = 24
-VOLUP = 25
-VOLDOWN = 4
-PODMODESW = 22
-PREVSW = 17
-
 BUTTONNONE = 0
 BUTTONNEXT = 1
 BUTTONSTOP = 2
@@ -46,7 +32,7 @@ BUTTONVOLDOWN = 4
 BUTTONMODE = 5
 BUTTONREBOOT = 6
 BUTTONHALT = 7
-PRESSED = True
+PRESSED = False		# decides which edge the button works on
 UPDATEOLEDFLAG = 1
 UPDATETEMPERATUREFLAG = 2
 UPDATESTATIONFLAG = 3
@@ -76,22 +62,28 @@ class Gpio:
 		self.myInfoDisplay = infodisplay.InfoDisplay(config.numberofrows)
 		self.myMpc = Mpc()
 		self.mySystem = System()
+		host = self.mySystem.return_hostname()
+		self.myInfoDisplay.writerow(1,host)
 		self.myTimeout = timeout.Timeout(verbosity)
 		self.programmename = self.myMpc.progname()
 		remaining = self.myMpc.check_time_left()
+		# First display set here
 		self.myInfoDisplay.update_row2(False, remaining)
-		self.show_next_station()
+		self.show_station()
+		self.programmename = self.myMpc.progname()
+		self.myInfoDisplay.proginfo(self.programmename)
 	
 	def master_loop(self):
 		'''Continuously cycle through all the possible events.'''
 		self.lasttime = time.time()		# has to be here to avoid long initial delay showing.
 		while True:
 			# regular events first
-			self.show_time_taken()
-			try:
+#			self.show_time_taken()
+			if config.numberofrows == 2:
 				time.sleep(.2)			# keep this inside try so that ctrl-c works here.		
 				if self.chgvol_flag == 0:		# do not scroll the volume bar
 					self.myInfoDisplay.scroll(self.programmename)
+			try:
 				self.process_timeouts()
 				reboot = self.process_button_presses()
 				if reboot == 1:
@@ -125,7 +117,14 @@ class Gpio:
 	def show_next_station(self):
 		prog = self.myMpc.next_station()
 		if config.numberofrows > 2:
-			self.myInfoDisplay.update_row4(prog)
+#			self.myInfoDisplay.update_row4(prog)
+			self.myInfoDisplay.writerow(1,'Station: {0:<16}'.format(prog))
+		return(0)
+
+	def show_station(self):
+		prog = self.myMpc.this_station()
+		if config.numberofrows > 2:
+			self.myInfoDisplay.writerow(1,'Station: {0:<16}'.format(prog))
 		return(0)
 	
 	def process_timeouts(self):
@@ -160,7 +159,9 @@ class Gpio:
 				self.myMpc.audioTimeout()
 				self.programmename = '    Timeout     '
 			if timeout_type == DISPLAYTIMEOUTFLAG:
-				self.myInfoDisplay.update_whole_display()
+				a=1
+				self.programmename = self.myMpc.progname()
+				self.myInfoDisplay.proginfo(self.programmename)
 		except:
 			self.logger.warning('Error in process_timeouts. Timeout type:'+str(timeout_type))
 			return(1)
@@ -191,11 +192,13 @@ class Gpio:
 				elif button == BUTTONNEXT:
 					if self.myMpc.next() == -1:
 						return('No pods left!')
+					self.show_station()
 					self.programmename = self.myMpc.progname()
-					self.show_next_station()
+					self.myInfoDisplay.proginfo(self.programmename)
 				elif button == BUTTONSTOP:
 					self.myMpc.toggle()
 					self.programmename = self.myMpc.progname()
+					self.myInfoDisplay.proginfo(self.programmename)
 				elif button == BUTTONREBOOT:
 					print 'Rebooting...'
 					self.myMpc.stop()
@@ -247,10 +250,10 @@ class Gpio:
 		# use P1 header pin numbering convention
 		GPIO.setmode(GPIO.BCM)
 		GPIO.setwarnings(True)
-		GPIO.setup(NEXTSW, GPIO.IN)
-		GPIO.setup(STOPSW, GPIO.IN)
-		GPIO.setup(VOLUP, GPIO.IN)
-		GPIO.setup(VOLDOWN, GPIO.IN)
+		GPIO.setup(config.NEXTSW, GPIO.IN,  pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(config.STOPSW, GPIO.IN,  pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(config.VOLUP, GPIO.IN,  pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(config.VOLDOWN, GPIO.IN,  pull_up_down=GPIO.PUD_UP)
 		return()
 
 	def pressednext(self,channel):
@@ -287,22 +290,22 @@ class Gpio:
 		for button presses. Callbacks are run in a parallel process.'''
 		self.logger.info("Using callbacks")
 #		BOUNCETIME=100
-		BOUNCETIME=300
+		BOUNCETIME=200
 		if PRESSED == True:
-			GPIO.add_event_detect(NEXTSW, GPIO.RISING, callback=self.pressednext, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(STOPSW, GPIO.RISING, callback=self.pressedstop, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(VOLUP, GPIO.RISING, callback=self.pressedvolup, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(VOLDOWN, GPIO.RISING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(config.NEXTSW, GPIO.RISING, callback=self.pressednext, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(config.STOPSW, GPIO.RISING, callback=self.pressedstop, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(config.VOLUP, GPIO.RISING, callback=self.pressedvolup, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(config.VOLDOWN, GPIO.RISING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)
 		else:
-			GPIO.add_event_detect(NEXTSW, GPIO.FALLING, callback=self.pressednext, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(STOPSW, GPIO.FALLING, callback=self.pressedstop, bouncetime=BOUNCETIME)	
-			GPIO.add_event_detect(VOLUP, GPIO.FALLING, callback=self.pressedvolup, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(VOLDOWN, GPIO.FALLING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)	
+			GPIO.add_event_detect(config.NEXTSW, GPIO.FALLING, callback=self.pressednext, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(config.STOPSW, GPIO.FALLING, callback=self.pressedstop, bouncetime=BOUNCETIME)	
+			GPIO.add_event_detect(config.VOLUP, GPIO.FALLING, callback=self.pressedvolup, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(config.VOLDOWN, GPIO.FALLING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)	
 		
 	def checkforstuckswitches(self):
 		'''Check that the gpio switches are not stuck in one state.'''
 		self.logger.debug("def gpio checkforstuckswitches")
-		in17 = GPIO.input(NEXTSW)
+		in17 = GPIO.input(config.NEXTSW)
 		if in17 == self.PRESSED:
 			self.logger.debug("pressed next sw")
 			stuck = 1
@@ -310,21 +313,21 @@ class Gpio:
 			sofar = datetime.datetime.now()
 			while sofar-start < datetime.timedelta(seconds=2):	# chk for 2 seconds
 				sofar = datetime.datetime.now()
-				in17 = GPIO.input(NEXTSW)
+				in17 = GPIO.input(config.NEXTSW)
 				if in17 != self.PRESSED:
 					stuck = 0
 			if stuck == 1:
 				print "** Error: stuck next switch **"
 				self.logger.error("Stuck next switch")
 				return(stuck)
-		in18 = GPIO.input(self.STOPSW)
+		in18 = GPIO.input(config.STOPSW)
 		if in18 == self.PRESSED:
 			stuck = 1
 			start = datetime.datetime.now()
 			sofar = datetime.datetime.now()
 			while sofar-start < datetime.timedelta(seconds=2):	# chk for 2 seconds
 				sofar = datetime.datetime.now()
-				in18 = GPIO.input(self.STOPSW)
+				in18 = GPIO.input(config.STOPSW)
 				if in18 != self.PRESSED:
 					stuck = 0
 			if stuck == 1:
@@ -337,7 +340,7 @@ class Gpio:
 		''' Call this after a delay after detecting the next button is pressed.
 			If the button is still pressed, then return 1. '''
 		time.sleep(delay)
-		in17 = GPIO.input(NEXTSW)
+		in17 = GPIO.input(config.NEXTSW)
 		if in17 == PRESSED:
 			self.pod = 1
 			return(1)
@@ -347,7 +350,7 @@ class Gpio:
 		''' Call this after a delay after detecting the stop button is pressed.
 			If the button is still pressed, then return 1. '''
 		time.sleep(delay)
-		in18 = GPIO.input(STOPSW)
+		in18 = GPIO.input(config.STOPSW)
 		if in18 == PRESSED:
 			self.reboot = 1
 			return(1)
@@ -357,7 +360,7 @@ class Gpio:
 		''' Call this after a delay after detecting the volup button is pressed.
 			If the button is still pressed, then return 1. '''
 		time.sleep(delay)
-		if GPIO.input(VOLUP) == PRESSED:
+		if GPIO.input(config.VOLUP) == PRESSED:
 			return(True)
 		return(False)
 
@@ -365,7 +368,7 @@ class Gpio:
 		''' Call this after a delay after detecting the volup button is pressed.
 			If the button is still pressed, then return 1. '''
 		time.sleep(delay)
-		if GPIO.input(VOLDOWN) == PRESSED:
+		if GPIO.input(config.VOLDOWN) == PRESSED:
 			return(True)
 		return(False)
 		
