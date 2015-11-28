@@ -3,10 +3,10 @@
 import subprocess, time, logging, datetime
 from weather import Weather
 import config
-if config.uoled == True:
+if config.board == 'oled':
 	from uoled import Oled
 else:
-	from oled import Oled
+	from tft import Screen as Oled 
 
 class InfoDisplay(Oled):
 	'''	Richer info on the oled. '''
@@ -17,7 +17,7 @@ class InfoDisplay(Oled):
 			self.rowlength = 16
 		else:
 			self.rowlength = 20
-#		self.writerow(1, 'Starting up...   ')
+		self.writerow(1, 'Starting up...   ')
 		self.myWeather = Weather()
 		self.update_row2(1)
 		self.lasttime = 0

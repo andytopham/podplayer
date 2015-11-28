@@ -1,6 +1,10 @@
 #!/bin/sh
 echo "** podplayer installer **"
 echo 'This will take a long time to run - time to grab a coffee (or even dinner).'
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root" 
+   exit 1
+fi
 echo "apt-get installs"
 apt-get update
 apt-get -y upgrade
@@ -17,7 +21,7 @@ echo 'configure system files'
 cp mpd.conf /etc
 cp startradio /etc/init.d
 chmod 755 /etc/init.d/startradio
-update-rc.d startradio defaults
+# update-rc.d startradio defaults
 cp sampleconfig.py config.py
 chmod 666 config.py
 #echo 'Setting up wifi'

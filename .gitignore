@@ -1,3 +1,5 @@
 # podplayer .gitignore file
 # pycharm creations...
 .idea*
+/binary
+*.pyc

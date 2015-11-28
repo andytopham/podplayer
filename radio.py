@@ -5,8 +5,8 @@ import sys			# required for sys.exit()
 import time, datetime, argparse, logging
 from gpio import Gpio
 
-LOGFILE = '/home/pi/podplayer/log/radio.log'
-VERSION = '5.2'
+LOGFILE = 'log/radio.log'
+VERSION = '6.0'
 
 def _setup_sockets():
 	'''For client/server operation. Not being used yet.'''
