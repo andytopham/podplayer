@@ -23,6 +23,10 @@ SPI_DEVICE = 0
 # Using a 5x8 font
 ROW_HEIGHT = 8
 ROW_LENGTH = 20
+# options for font size: 12,18,24,36,48,60,72
+DEFAULT_FONTSIZE = 18
+ROWLENGTH = 22		# works for 24 font
+ROWLENGTH = 29		# works for 18 font
 
 class Screen:
 	''' Class to control the tft.
@@ -30,23 +34,26 @@ class Screen:
 		Calling writerow does not display anything. Also need to call display.
 		'''
 	def __init__(self, rowcount=4):
-		self.rowlength = 22
+		self.rowlength = ROWLENGTH
+		rowcount = 6
+		self.rowcount = rowcount
 		self.disp = TFT.ILI9341(DC, rst=RST, spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=64000000))
 		self.disp.begin()
 		self.disp.clear()	# black
-		self.old_text = [' ' for i in range(5)]	# used for clearing oled text
+		self.old_text = [' ' for i in range(rowcount)]	# used for clearing oled text
 #		self.font = ImageFont.load_default()
-		self.font = [ImageFont.load_default() for i in range(5)]
-		self.fontsize = [24 for i in range(rowcount)]		# default font size
-#		self.fontsize[1] = 36		
-		self.font[0] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[0])
-		self.font[1] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[1])
-		self.font[2] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[2])
-		self.font[3] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[3])
+#		self.font = [ImageFont.load_default() for i in range(rowcount)]
+		self.fontsize = [DEFAULT_FONTSIZE for i in range(rowcount)]		# default font size
+		self.font = [ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[0]) for i in range(rowcount)]
+#		self.fontsize[0] = 36		
+#		self.font[0] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[0])
+#		self.font[1] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[1])
+#		self.font[2] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[2])
+#		self.font[3] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[3])
 		self.offset = [0 for i in range(rowcount)]
 		# setup the pixel offset for each row
 		for i in range (1,rowcount):
-			self.offset[i] = self.offset[i-1]+self.fontsize[i]
+			self.offset[i] = self.offset[i-1]+self.fontsize[i-1]
 	
 	def _draw_rotated_text(self, image, text, position, angle, font, fill=(255,255,255)):
 		# Get rendered font width and height.
