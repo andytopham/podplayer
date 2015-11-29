@@ -30,21 +30,23 @@ class Screen:
 		Calling writerow does not display anything. Also need to call display.
 		'''
 	def __init__(self, rowcount=4):
+		self.rowlength = 22
 		self.disp = TFT.ILI9341(DC, rst=RST, spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=64000000))
 		self.disp.begin()
 		self.disp.clear()	# black
 		self.old_text = [' ' for i in range(5)]	# used for clearing oled text
 #		self.font = ImageFont.load_default()
-#		self.font = ImageFont.truetype('binary/morningtype.ttf',FONTSIZE)
-#		self.font = ImageFont.truetype('binary/secrcode.ttf',FONTSIZE)
-#		self.font = ImageFont.truetype('binary/DS-DIGI.TTF',FONTSIZE)
 		self.font = [ImageFont.load_default() for i in range(5)]
-		self.fontsize = [24 for i in range(4)]
-#		self.fontsize[1] = 36
-		self.font[1] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[0])
-		self.font[2] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[1])
-		self.font[3] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[2])
-		self.font[4] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[3])
+		self.fontsize = [24 for i in range(rowcount)]		# default font size
+#		self.fontsize[1] = 36		
+		self.font[0] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[0])
+		self.font[1] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[1])
+		self.font[2] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[2])
+		self.font[3] = ImageFont.truetype('binary/Hack-Regular.ttf',self.fontsize[3])
+		self.offset = [0 for i in range(rowcount)]
+		# setup the pixel offset for each row
+		for i in range (1,rowcount):
+			self.offset[i] = self.offset[i-1]+self.fontsize[i]
 	
 	def _draw_rotated_text(self, image, text, position, angle, font, fill=(255,255,255)):
 		# Get rendered font width and height.
@@ -76,27 +78,19 @@ class Screen:
 		return(0)
 	
 	def writerow(self, rownumber, string, clear=True):
+		thisrow = rownumber - 1
 		rotation = 90
-		if rownumber == 2:
-			fontsize = 60
-		else:
-			fontsize = 24		
 		if rotation == 0:
 			xpos = 0
-			ypos = 0
-			for i in range (rownumber-1):
-				ypos += self.fontsize[i]
-#			ypos = rownumber * fontsize				
+			ypos = self.offset[thisrow]
 		else:
 			ypos = 0
-			xpos = 0
-			for i in range (rownumber-1):
-				xpos += self.fontsize[i]
-		thisfont = self.font[rownumber]
+			xpos = self.offset[thisrow]
+		thisfont = self.font[thisrow]
 		if clear == True:
-			self._draw_rotated_text(self.disp.buffer, self.old_text[rownumber], (xpos, ypos), rotation, thisfont, fill=(0,0,0))
+			self._draw_rotated_text(self.disp.buffer, self.old_text[thisrow], (xpos, ypos), rotation, thisfont, fill=(0,0,0))
 		self._draw_rotated_text(self.disp.buffer, string, (xpos, ypos), rotation, thisfont, fill=(255,255,255))
-		self.old_text[rownumber] = string
+		self.old_text[thisrow] = string
 		self.display()
 		return(0)
 		

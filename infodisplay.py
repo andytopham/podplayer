@@ -13,10 +13,12 @@ class InfoDisplay(Oled):
 	def __init__(self,rowcount=2):
 		self.logger = logging.getLogger(__name__)
 		Oled.__init__(self, rowcount)		# We are a subclass, so need to be explicit about which init
-		if rowcount == 2:
-			self.rowlength = 16
-		else:
-			self.rowlength = 20
+		print 'row length ',self.rowlength
+#		if rowcount == 2:
+#			self.rowlength = 16
+#		else:
+#			self.rowlength = 20
+		self.rowcount = rowcount
 		self.writerow(1, 'Starting up...   ')
 		self.myWeather = Weather()
 		self.update_row2(1)
@@ -24,11 +26,8 @@ class InfoDisplay(Oled):
 		self.delta = 0.001
 	
 	def update_row2(self, temperature_refresh_needed=False, time_remaining=0):
-		'''Time and temperature display on the info line - not necessarily row 2!'''
-		if self.rowlength == 16:
-			inforow = 2
-		else:
-			inforow = 4
+		'''Time and temperature display on the info line = bottom row'''
+		inforow = self.rowcount		# the last row
 		try:
 			clock = time.strftime("%R")
 			self.logger.info('Update row2:'+clock)
@@ -37,31 +36,19 @@ class InfoDisplay(Oled):
 		except:
 			self.logger.warning('Error in updaterow2, part 1.')
 			return(1)
-		if True:
-			if self.rowlength == 16:
-				self.writerow(inforow,
-					'{0:5s}  {1:7.1f}^C'.format(clock, float(self.temperature)))
-			else:
-				self.writerow(inforow,
-					'{0:5s}{1:13.1f}^C'.format(clock, float(self.temperature)))		
-		else:			# a version for debugging
-			if self.rowlength == 16:
-				self.writerow(inforow,
-					'{0:5s}{1:4d}{2:5.1f}^C'.format(clock, time_remaining, float(self.temperature)))		
-			else:
-				self.writerow(inforow,
-					'{0:5s}{1:5d}{2:8.1f}^C'.format(clock, time_remaining, float(self.temperature)))		
+		self.writerow(inforow,
+			'{0:5s}{1:7.1f}^C'.format(clock.ljust(self.rowlength-9), float(self.temperature)))		
 		return(0)
 	
 	def proginfo(self,string):
 		self.logger.info('proginfo:'+string)
-		if self.rowlength == 20:
-			self.writerow(1,string[0:20])
-			self.writerow(2,string[20:40])
-			self.writerow(3,'{0: <20}'.format(string[40:60]))
+		self.writerow(1,string[0:self.rowlength])
+		self.writerow(2,string[self.rowlength:self.rowlength*2])
+		# strip off any leading space.
+		if string[self.rowlength*2] == ' ':
+			self.writerow(3,string[(self.rowlength*2)+1:(self.rowlength*3)+1].ljust(self.rowlength))		
 		else:
-			self.writerow(1,'{0:16.16}'.format(string))
-		
+			self.writerow(3,string[self.rowlength*2:self.rowlength*3].ljust(self.rowlength))		
 
 	def displayvol(self, string):
 		if self.rowlength == 16:
