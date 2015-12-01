@@ -14,7 +14,6 @@ class InfoDisplay(Oled):
 		self.logger = logging.getLogger(__name__)
 		self.rowcount = rowcount
 		Oled.__init__(self, rowcount)		# We are a subclass, so need to be explicit about which init
-		print 'row length ',self.rowlength
 		self.writerow(1, 'Starting up...'.center(self.rowlength))
 		self.myWeather = Weather()
 		self.update_row2(1)
@@ -36,24 +35,29 @@ class InfoDisplay(Oled):
 		return(0)
 	
 	def proginfo(self,string):
+		'''Display up to 3 rows of the program name and details.'''
 		self.logger.info('proginfo:'+string)
-		retstr = self.find_station_name(string)
-		if retstr:
-			offset = len(retstr)		# not enough - bodge below
-			offset += 4
+		retstr = self._find_station_name(string)
+		if retstr:						# if the station is recognised.
 			self.writerow(1,retstr.center(self.rowlength))
-			self.writerow(2,string[offset:self.rowlength+offset])
-			self.writerow(3,string[self.rowlength+offset:(self.rowlength*2)+offset].ljust(self.rowlength))
+			string = string[len(retstr)+4:]		# trim off the station name.
 		else:
-			self.writerow(1,string[0:self.rowlength])
-			self.writerow(2,string[self.rowlength+offset:(self.rowlength*2)+offset])
-			# strip off any leading space.
-			if string[(self.rowlength*2)+offset] == ' ':
-				self.writerow(3,string[(self.rowlength*2)+1+offset:(self.rowlength*3)+1+offset].ljust(self.rowlength))		
-			else:
-				self.writerow(3,string[(self.rowlength*2)+offset:(self.rowlength*3)+offset].ljust(self.rowlength))		
-
-	def find_station_name(self,string):
+			self.writerow(1,string[:self.rowlength].ljust(self.rowlength))
+			string = string[self.rowlength:]	
+		for i in range(2, self.rowcount):
+			string = self._process_next_row(i,string)
+		return(0)
+		
+	def _process_next_row(self, row, string):
+		if len(string) > 0:
+			if string[0] == ' ':				# strip off any leading space.
+				string = string[1:]
+			self.writerow(row,string[:self.rowlength].ljust(self.rowlength))
+			string = string[self.rowlength:]
+		return(string)
+	
+	def _find_station_name(self,string):
+		''' Just recognise the BBC station.'''
 		a = string.split()
 		if a[0] == 'BBC':
 			retstr = a[0]+' '+a[2]+a[3]

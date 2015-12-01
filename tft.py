@@ -20,13 +20,10 @@ RST = 23
 DC    = 18
 SPI_PORT = 0
 SPI_DEVICE = 0
-# Using a 5x8 font
-ROW_HEIGHT = 8
-ROW_LENGTH = 20
+
 # options for font size: 12,18,24,36,48,60,72
-DEFAULT_FONTSIZE = 18
-ROWLENGTH = 22		# works for 24 font
-ROWLENGTH = 29		# works for 18 font
+#DEFAULT_FONTSIZE, ROWLENGTH = 18, 29
+DEFAULT_FONTSIZE, ROWLENGTH = 24, 22
 
 class Screen:
 	''' Class to control the tft.
@@ -85,6 +82,7 @@ class Screen:
 		return(0)
 	
 	def writerow(self, rownumber, string, clear=True):
+		'''Display just a single row of text.'''
 		thisrow = rownumber - 1
 		rotation = 90
 		if rotation == 0:
@@ -114,23 +112,16 @@ class Screen:
 #		self.MySsd.draw_pixel(x,y+1,True)
 #		self.MySsd.draw_pixel(x+1,y+1,True)
 		return(0)
-		
-	def write_counter(self):
-		x = 0
-		for x in range(100):
-			self.writerow(5, str(x), True)
-			self.display()
-			time.sleep(1)
 			
 	def show_time(self):
 		while True:
-			date_now = '{:<18}'.format(time.strftime("%b %d %Y ", time.gmtime()))
-			time_now = '{:<8}'.format(time.strftime("%H:%M:%S", time.gmtime()))
-			self.writerow(1, date_now, True)	
-			self.writerow(2, time_now+' ', True)	
-			self.writerow(3, '012345678901234567890', True)	
-			self.writerow(4, 'Row 4', True)	
-			self.display()
+			date_now = time.strftime("%b %d %Y", time.gmtime())
+			time_now = time.strftime("%H:%M:%S", time.gmtime())
+			self.writerow(1, date_now.center(self.rowlength))	
+			self.writerow(2, time_now.center(self.rowlength))	
+			self.writerow(3, '0123456789012345678901234567890')	
+			self.writerow(4, 'Row 4'.center(self.rowlength))	
+#			self.display()
 			time.sleep(1)
 		return(0)
 	
