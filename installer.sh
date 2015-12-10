@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 echo "** podplayer installer **"
 echo 'This will take a long time to run - time to grab a coffee (or even dinner).'
 if [[ $EUID -ne 0 ]]; then
@@ -24,17 +24,10 @@ chmod 755 /etc/init.d/startradio
 # update-rc.d startradio defaults
 cp sampleconfig.py config.py
 chmod 666 config.py
-#echo 'Setting up wifi'
-#cp /etc/network/interfaces /etc/network/interfaces.bak
-#cp interfaces /etc/network
-#echo 'Fixing serial garbage.'
-#cp /boot/cmdline.txt /boot/cmdline.bak
-#cp cmdline.txt /boot
 echo 'Setting up runtime environment'
 chmod +x radio.py
 mkdir log
 echo '*************************'
 echo 'You still need to:'
 echo '1. update the keys in the config.py file'
-echo '2. update the ip address and wifi key in /etc/wpa_supplicant/wpa_supplicant.conf.'
 

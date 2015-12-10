@@ -8,13 +8,17 @@ if config.board == 'oled':
 else:
 	from tft import Screen as Oled 
 
+TITLE_ROW = 0	# for tft
+# TITLE_ROW = 0	# for uoled and oled
+
 class InfoDisplay(Oled):
 	'''	Richer info on the oled. '''
 	def __init__(self,rowcount=2):
 		self.logger = logging.getLogger(__name__)
 		self.rowcount = rowcount
 		Oled.__init__(self, rowcount)		# We are a subclass, so need to be explicit about which init
-		self.writerow(1, 'Starting up...'.center(self.rowlength))
+		self.rowcount, self.rowlength = self.info()
+		self.writerow(TITLE_ROW, 'Starting up...'.center(self.rowlength))
 		self.myWeather = Weather()
 		self.update_row2(1)
 		self.lasttime = 0
@@ -30,8 +34,8 @@ class InfoDisplay(Oled):
 		except:
 			self.logger.warning('Error in updaterow2, part 1.')
 			return(1)
-		self.writerow(self.rowcount,
-			'{0:5s}{1:7.1f}^C'.format(clock.ljust(self.rowlength-9), float(self.temperature)))		
+		self.write_radio_extras(clock, self.temperature)
+		self.writelabels()
 		return(0)
 	
 	def proginfo(self,string):
@@ -39,12 +43,12 @@ class InfoDisplay(Oled):
 		self.logger.info('proginfo:'+string)
 		retstr = self._find_station_name(string)
 		if retstr:						# if the station is recognised.
-			self.writerow(1,retstr.center(self.rowlength))
+			self.writerow(TITLE_ROW,retstr.center(self.rowlength))
 			string = string[len(retstr)+4:]		# trim off the station name.
 		else:
-			self.writerow(1,string[:self.rowlength].ljust(self.rowlength))
+			self.writerow(TITLE_ROW,string[:self.rowlength].ljust(self.rowlength))
 			string = string[self.rowlength:]	
-		for i in range(2, self.rowcount):
+		for i in range(TITLE_ROW+1, self.rowcount):
 			string = self._process_next_row(i,string)
 		return(0)
 		

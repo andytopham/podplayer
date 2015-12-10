@@ -190,15 +190,19 @@ class Gpio:
 				if button == BUTTONMODE:
 					self.myMpc.switchmode()
 				elif button == BUTTONNEXT:
+					self.myInfoDisplay.writelabels(True)
 					if self.myMpc.next() == -1:
 						return('No pods left!')
 					self.show_station()
 					self.programmename = self.myMpc.progname()
 					self.myInfoDisplay.proginfo(self.programmename)
+					self.myInfoDisplay.writelabels()		# reset
 				elif button == BUTTONSTOP:
+					self.myInfoDisplay.writelabels(False, True)
 					self.myMpc.toggle()
 					self.programmename = self.myMpc.progname()
 					self.myInfoDisplay.proginfo(self.programmename)
+					self.myInfoDisplay.writelabels()		# reset
 				elif button == BUTTONREBOOT:
 					print 'Rebooting...'
 					self.myMpc.stop()

@@ -49,6 +49,14 @@ class Oled:
 		self.writerow(4,'                    ')
 		return(0)
 
+	def writelabels(self):
+		# no labels with small display.
+		return(0)
+	
+	def write_radio_extras(self, clock, temperature):
+		self.writerow(self.rowcount,'{0:5s}{1:7.1f}^C'.format(clock.ljust(self.rowlength-9),float(temperature)))		
+		return(0)
+	
 	def numberofrows(self):
 		''' Just returns the number of rows in the display for use by other routines.'''
 		return(self.rowcount)
