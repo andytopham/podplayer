@@ -4,7 +4,15 @@ import subprocess, time, logging, datetime
 from weather import Weather
 import config
 
+### Display layout
+# ROWS 0 to 3 = Prog info
 TITLE_ROW = 0	# for tft
+TIMING_ROW = 7
+NEXT_STATION_ROW = 8
+#
+# radio extras
+# button labels
+###
 
 class InfoDisplay():
 	'''	Richer info on the oled. '''
@@ -60,6 +68,10 @@ class InfoDisplay():
 				string = string[1:]
 			self.myScreen.writerow(row,string[:self.rowlength].ljust(self.rowlength))
 			string = string[self.rowlength:]
+		else:
+			if row < 4:
+				string = ''
+				self.myScreen.writerow(row,string)
 		return(string)
 	
 	def _find_station_name(self,string):
@@ -74,16 +86,16 @@ class InfoDisplay():
 	def displayvol(self, string):
 		self.myScreen.writerow(self.rowcount-1, string)	
 
-	def _update_row3(self, elapsed=0, maxelapsed=0):
+	def show_timings(self, elapsed=0, maxelapsed=0):
 		'''Show time gone.'''
 		if ((elapsed - self.lasttime) > self.delta) or ((self.lasttime - elapsed) > self.delta): 
-			self.myScreen.writerow(3,'Now={0:4.2f}s Max={1:5.2f}s'.format(elapsed, maxelapsed))
+			self.myScreen.writerow(TIMING_ROW,'Now={0:4.2f}s Max={1:5.2f}s'.format(elapsed, maxelapsed))
 			self.lasttime = elapsed
 		return(0)
 
-	def _update_row4(self,prog='Test'):
+	def show_next_station(self,prog='Test'):
 		'''Show test code.'''
-		self.myScreen.writerow(4,prog)
+		self.myScreen.writerow(NEXT_STATION_ROW, prog[:self.rowlength])
 		return(0)
 		
 	def _update_whole_display(self):
@@ -96,11 +108,15 @@ class InfoDisplay():
 		for i in range(len(string)+1):
 			self.myScreen.writerow(row,string[i:i+self.rowlength])
 		return(0)
-	
+
+	def writelabels(self, next = False, stop = False):
+		self.myScreen.write_button_labels(next, stop)
+		return(0)
+		
 if __name__ == "__main__":
 	print 'Infodisplay test'		
 	myID = InfoDisplay()
-	dir(myID)
+	print dir(myID)
 	myID.show_prog_info('This is a very long text string to test where the programme information would normally be printed.')
 	myID.scroll(6,'This is a very long text string to test where the programme information would normally be printed.')
 	

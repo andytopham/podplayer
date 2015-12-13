@@ -27,6 +27,7 @@ chmod 666 config.py
 echo 'Setting up runtime environment'
 chmod +x radio.py
 mkdir log
+chown pi log
 echo '*************************'
 echo 'You still need to:'
 echo '1. update the keys in the config.py file'

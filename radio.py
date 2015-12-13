@@ -3,10 +3,19 @@
 import os
 import sys			# required for sys.exit()
 import time, datetime, argparse, logging
-from gpio import Gpio
+# from gpio import Gpio
+import executive
 
 LOGFILE = 'log/radio.log'
-VERSION = '6.0'
+VERSION = '6.1'
+
+''' 
+Class structure (ignoring library calls)
+radio ->executive	-> gpio 	-> infodisplay	-> tft or oled
+					-> mpc
+					-> system
+					-> timeout
+'''
 
 def _setup_sockets():
 	'''For client/server operation. Not being used yet.'''
@@ -36,10 +45,10 @@ def _radio_start(v=0):
 	print "podplayer v", VERSION
 	logging.info('******************')
 	logging.warning("podplayer v"+VERSION)
-	myGpio=Gpio()
-	myGpio.startup(v)
+	myExecutive = executive.Executive()
+	myExecutive.startup(v)
 	logging.info("Starting main podplayer loop")
-	myGpio.master_loop()
+	myExecutive.master_loop()
 			
 if __name__ == "__main__":
 	'''	iradio main routine. Set up logging before calling radiostart.'''
