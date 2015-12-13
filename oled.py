@@ -19,7 +19,7 @@ LOGFILE = 'log/oled.log'
 
 class Oled:
 	'''	Oled class. Routines for driving the serial oled. '''
-	def __init__(self, rows = 2):
+	def __init__(self, rows = 2, rowlength = 16):
 		self.logger = logging.getLogger(__name__)
 		self.port = serial.Serial(
 			port='/dev/ttyAMA0', 
@@ -29,10 +29,7 @@ class Oled:
 			stopbits=serial.STOPBITS_TWO)	# Note - not just one stop bit
 		#constants
 		self.rowcount = rows
-		if rows == 2:
-			self.rowlength = 16
-		else:
-			self.rowlength = 20
+		self.rowlength = rowlength
 		self.rowselect = [128,192,148,212]	# the addresses of the start of each row
 		self.start=0
 		self.initialise()
@@ -50,7 +47,7 @@ class Oled:
 		return(0)
 
 	def writelabels(self):
-		# no labels with small display.
+		# These are the botton labels. No labels with small display.
 		return(0)
 	
 	def write_radio_extras(self, clock, temperature):
@@ -137,6 +134,7 @@ if __name__ == "__main__":
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running oled class as a standalone app")
 	myOled = oled()
+	dir(myOled)				# list functions for debug purposes
 	myOled.cleardisplay()
 	myOled.writerow(1,"   OLED class       ")
 	myOled.writerow(2,"Config size="+str(myOled.rowlength)+"x"+str(myOled.rowcount))

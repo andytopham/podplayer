@@ -39,6 +39,7 @@ UPDATESTATIONFLAG = 3
 AUDIOTIMEOUTFLAG = 4
 VOLUMETIMEOUTFLAG = 5
 DISPLAYTIMEOUTFLAG = 6
+SCROLL_ROW = 6
 
 class Gpio:
 	'''A class containing ways to handle the RPi gpio. '''
@@ -59,7 +60,7 @@ class Gpio:
 
 	def startup(self, verbosity):
 		'''Initialisation for the objects that have variable startup behaviour'''
-		self.myInfoDisplay = infodisplay.InfoDisplay(config.numberofrows)
+		self.myInfoDisplay = infodisplay.InfoDisplay()
 		self.myMpc = Mpc()
 		self.mySystem = System()
 		host = self.mySystem.return_hostname()
@@ -68,10 +69,10 @@ class Gpio:
 		self.programmename = self.myMpc.progname()
 		remaining = self.myMpc.check_time_left()
 		# First display set here
-		self.myInfoDisplay.update_row2(False, remaining)
+		self.myInfoDisplay.update_info_row(False)
 		self.show_station()
 		self.programmename = self.myMpc.progname()
-		self.myInfoDisplay.proginfo(self.programmename)
+		self.myInfoDisplay.show_prog_info(self.programmename)
 	
 	def master_loop(self):
 		'''Continuously cycle through all the possible events.'''
@@ -82,7 +83,7 @@ class Gpio:
 			if config.numberofrows == 2:
 				time.sleep(.2)			# keep this inside try so that ctrl-c works here.		
 				if self.chgvol_flag == 0:		# do not scroll the volume bar
-					self.myInfoDisplay.scroll(self.programmename)
+					self.myInfoDisplay.scroll(SCROLL_ROW, self.programmename)
 			try:
 				self.process_timeouts()
 				reboot = self.process_button_presses()
@@ -139,10 +140,10 @@ class Gpio:
 			if timeout_type == UPDATEOLEDFLAG:
 	#			remaining = self.myTimeout.get_time_remaining()
 				remaining = self.myMpc.check_time_left()
-				self.myInfoDisplay.update_row2(False, remaining)	# this has to be here to update time
+				self.myInfoDisplay.update_info_row(False)	# this has to be here to update time
 				self.programmename = self.myMpc.progname()
 			if timeout_type == UPDATETEMPERATUREFLAG:
-				self.myInfoDisplay.update_row2(True, remaining)
+				self.myInfoDisplay.update_info_row(True)
 			if timeout_type == UPDATESTATIONFLAG:
 				# handle the bbc links going stale
 				if self.myMpc.loadbbc():			# failed
@@ -161,7 +162,7 @@ class Gpio:
 			if timeout_type == DISPLAYTIMEOUTFLAG:
 				a=1
 				self.programmename = self.myMpc.progname()
-				self.myInfoDisplay.proginfo(self.programmename)
+				self.myInfoDisplay.show_prog_info(self.programmename)
 		except:
 			self.logger.warning('Error in process_timeouts. Timeout type:'+str(timeout_type))
 			return(1)
@@ -195,13 +196,13 @@ class Gpio:
 						return('No pods left!')
 					self.show_station()
 					self.programmename = self.myMpc.progname()
-					self.myInfoDisplay.proginfo(self.programmename)
+					self.myInfoDisplay.show_prog_info(self.programmename)
 					self.myInfoDisplay.writelabels()		# reset
 				elif button == BUTTONSTOP:
 					self.myInfoDisplay.writelabels(False, True)
 					self.myMpc.toggle()
 					self.programmename = self.myMpc.progname()
-					self.myInfoDisplay.proginfo(self.programmename)
+					self.myInfoDisplay.show_prog_info(self.programmename)
 					self.myInfoDisplay.writelabels()		# reset
 				elif button == BUTTONREBOOT:
 					print 'Rebooting...'

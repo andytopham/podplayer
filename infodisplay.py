@@ -3,52 +3,54 @@
 import subprocess, time, logging, datetime
 from weather import Weather
 import config
-if config.board == 'oled':
-	from uoled import Oled
-else:
-	from tft import Screen as Oled 
 
 TITLE_ROW = 0	# for tft
-# TITLE_ROW = 0	# for uoled and oled
 
-class InfoDisplay(Oled):
+class InfoDisplay():
 	'''	Richer info on the oled. '''
-	def __init__(self,rowcount=2):
+	def __init__(self):
 		self.logger = logging.getLogger(__name__)
-		self.rowcount = rowcount
-		Oled.__init__(self, rowcount)		# We are a subclass, so need to be explicit about which init
-		self.rowcount, self.rowlength = self.info()
-		self.writerow(TITLE_ROW, 'Starting up...'.center(self.rowlength))
+		if config.board == 'oled':
+			import oled
+			self.myScreen = oled.Oled()
+		else:
+			import tft
+			self.myScreen = tft.Screen()
+		self.rowcount, self.rowlength = self.myScreen.info()
+		self.myScreen.writerow(TITLE_ROW, 'Starting up...'.center(self.rowlength))
 		self.myWeather = Weather()
-		self.update_row2(1)
+		self.update_info_row(True)
 		self.lasttime = 0
 		self.delta = 0.001
-	
-	def update_row2(self, temperature_refresh_needed=False, time_remaining=0):
+
+	def writerow(self, row, string):
+		self.myScreen.writerow(row, string)
+		
+	def update_info_row(self, temperature_refresh_needed=False):
 		'''Time and temperature display on the info line = bottom row'''
 		try:
 			clock = time.strftime("%R")
-			self.logger.info('Update row2:'+clock)
+			self.logger.info('Update info row:'+clock)
 			if temperature_refresh_needed:
 				self.temperature = self.myWeather.wunder(config.key, config.locn)
 		except:
-			self.logger.warning('Error in updaterow2, part 1.')
+			self.logger.warning('Error in update info row, part 1.')
 			return(1)
-		self.write_radio_extras(clock, self.temperature)
-		self.writelabels()
+		self.myScreen.write_radio_extras(clock, self.temperature)
+		self.myScreen.write_button_labels()
 		return(0)
 	
-	def proginfo(self,string):
-		'''Display up to 3 rows of the program name and details.'''
+	def show_prog_info(self,string):
+		'''Display up to 2 rows from bottom of display of the program name and details.'''
 		self.logger.info('proginfo:'+string)
 		retstr = self._find_station_name(string)
 		if retstr:						# if the station is recognised.
-			self.writerow(TITLE_ROW,retstr.center(self.rowlength))
+			self.myScreen.writerow(TITLE_ROW,retstr.center(self.rowlength))
 			string = string[len(retstr)+4:]		# trim off the station name.
 		else:
-			self.writerow(TITLE_ROW,string[:self.rowlength].ljust(self.rowlength))
+			self.myScreen.writerow(TITLE_ROW,string[:self.rowlength].ljust(self.rowlength))
 			string = string[self.rowlength:]	
-		for i in range(TITLE_ROW+1, self.rowcount):
+		for i in range(TITLE_ROW+1, self.rowcount-2):
 			string = self._process_next_row(i,string)
 		return(0)
 		
@@ -56,7 +58,7 @@ class InfoDisplay(Oled):
 		if len(string) > 0:
 			if string[0] == ' ':				# strip off any leading space.
 				string = string[1:]
-			self.writerow(row,string[:self.rowlength].ljust(self.rowlength))
+			self.myScreen.writerow(row,string[:self.rowlength].ljust(self.rowlength))
 			string = string[self.rowlength:]
 		return(string)
 	
@@ -70,29 +72,35 @@ class InfoDisplay(Oled):
 			return(False)
 	
 	def displayvol(self, string):
-		if self.rowlength == 16:
-			self.writerow(1, string)	
-		else:
-			self.writerow(4, string)	
+		self.myScreen.writerow(self.rowcount-1, string)	
 
-	def update_row3(self, elapsed=0, maxelapsed=0):
+	def _update_row3(self, elapsed=0, maxelapsed=0):
 		'''Show time gone.'''
 		if ((elapsed - self.lasttime) > self.delta) or ((self.lasttime - elapsed) > self.delta): 
-			self.writerow(3,'Now={0:4.2f}s Max={1:5.2f}s'.format(elapsed, maxelapsed))
+			self.myScreen.writerow(3,'Now={0:4.2f}s Max={1:5.2f}s'.format(elapsed, maxelapsed))
 			self.lasttime = elapsed
 		return(0)
 
-	def update_row4(self,prog='Test'):
+	def _update_row4(self,prog='Test'):
 		'''Show test code.'''
-		self.writerow(4,prog)
+		self.myScreen.writerow(4,prog)
 		return(0)
 		
-	def update_whole_display(self):
+	def _update_whole_display(self):
 		self.update_row2()
 		self.update_row3()
 		self.update_row4()
 		return(0)
-		
-	def scroll(self, string):
+	
+	def scroll(self,row,string):
+		for i in range(len(string)+1):
+			self.myScreen.writerow(row,string[i:i+self.rowlength])
 		return(0)
-		
+	
+if __name__ == "__main__":
+	print 'Infodisplay test'		
+	myID = InfoDisplay()
+	dir(myID)
+	myID.show_prog_info('This is a very long text string to test where the programme information would normally be printed.')
+	myID.scroll(6,'This is a very long text string to test where the programme information would normally be printed.')
+	
