@@ -16,10 +16,21 @@ import subprocess, time, logging, datetime
 import config
 
 LOGFILE = 'log/oled.log'
+ROWLENGTH4 = 20
+ROWLENGTH2 = 16
+LAST_PROG_ROW4 = 2
+LAST_PROG_ROW2 = 0
 
-class Oled:
+class Screen:
 	'''	Oled class. Routines for driving the serial oled. '''
-	def __init__(self, rows = 2, rowlength = 16):
+	def __init__(self, rows = 4):
+		self.rowcount = rows
+		if rows == 4:
+			self.rowlength = ROWLENGTH4
+			self.last_prog_row = LAST_PROG_ROW4
+		else:
+			self.rowlength = ROWLENGTH2
+			self.last_prog_row = LAST_PROG_ROW2
 		self.logger = logging.getLogger(__name__)
 		self.port = serial.Serial(
 			port='/dev/ttyAMA0', 
@@ -28,8 +39,6 @@ class Oled:
 			parity=serial.PARITY_NONE,
 			stopbits=serial.STOPBITS_TWO)	# Note - not just one stop bit
 		#constants
-		self.rowcount = rows
-		self.rowlength = rowlength
 		self.rowselect = [128,192,148,212]	# the addresses of the start of each row
 		self.start=0
 		self.initialise()
@@ -40,18 +49,27 @@ class Oled:
 		self.port.write(chr(254))		# cmd
 		self.port.write(chr(1))			# clear display
 		self.start = 0
-		self.writerow(1, '')
-		self.writerow(2, '')
+		self.writerow(0, ' ')
+		self.writerow(1, ' ')
+		self.writerow(2,'                    ')
 		self.writerow(3,'                    ')
-		self.writerow(4,'                    ')
 		return(0)
 
-	def writelabels(self):
-		# These are the botton labels. No labels with small display.
+	def info(self):
+		return(self.rowcount, self.rowlength)
+
+	def write_button_labels(self, next, stop):
+		# These are the button labels. No labels with small display.
+		if next == True:
+			self.logger.info('write_button_labels. Next')
+			self.writerow(0,'Next            ')
+		if stop == True:
+			self.logger.info('write_button_labels. Stop')
+			self.writerow(0,'Stop            ')		
 		return(0)
 	
 	def write_radio_extras(self, clock, temperature):
-		self.writerow(self.rowcount,'{0:5s}{1:7.1f}^C'.format(clock.ljust(self.rowlength-9),float(temperature)))		
+		self.writerow(self.rowcount-1,'{0:5s}{1:7.1f}^C'.format(clock.ljust(self.rowlength-9),float(temperature)))		
 		return(0)
 	
 	def numberofrows(self):
@@ -64,9 +82,10 @@ class Oled:
 		time.sleep(.5)
 
 	def writerow(self,row,string):
-		self.port.write(chr(254))		# cmd
-		self.port.write(chr(self.rowselect[row-1]))	# move to start of row
-		self.port.write(string[0:self.rowlength].ljust(self.rowlength))
+		if row < self.rowcount:
+			self.port.write(chr(254))		# cmd
+			self.port.write(chr(self.rowselect[row]))	# move to start of row
+			self.port.write(string[0:self.rowlength].ljust(self.rowlength))
 		
 	def scroll(self,string):
 		if self.rowcount > 2:
@@ -105,12 +124,12 @@ class Oled:
 	def screensave(self):
 		while True:
 			for j in range(self.rowcount):
-				self.writerow(j+1,".")
+				self.writerow(j,".")
 				for i in range(self.rowlength-1):
 					time.sleep(.5)
 					self.port.write(".")
 			for j in range(self.rowcount):
-				self.writerow(j+1," ")
+				self.writerow(j," ")
 				for i in range(self.rowlength-1):
 					time.sleep(.5)
 					self.port.write(" ")
@@ -133,13 +152,13 @@ if __name__ == "__main__":
 						level=logging.INFO)	#filemode means that we do not append anymore
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running oled class as a standalone app")
-	myOled = oled()
+	myOled = Screen()
 	dir(myOled)				# list functions for debug purposes
 	myOled.cleardisplay()
-	myOled.writerow(1,"   OLED class       ")
-	myOled.writerow(2,"Config size="+str(myOled.rowlength)+"x"+str(myOled.rowcount))
+	myOled.writerow(0,"   OLED class       ")
+	myOled.writerow(1,"Config size="+str(myOled.rowlength)+"x"+str(myOled.rowcount))
 	if myOled.rowcount > 2:
-		myOled.writerow(3,"01234567890123456789")
-		myOled.writerow(4,"Running oled.py     ")
-	myOled.screensave()
+		myOled.writerow(2,"01234567890123456789")
+		myOled.writerow(3,"Running oled.py     ")
+#	myOled.screensave()
 		

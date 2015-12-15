@@ -28,6 +28,7 @@ ROW_LENGTH = 20
 DEFAULT_FONT_SIZE = 24
 NO_OF_ROWS = 12
 ROW_LENGTH = 17
+LAST_PROG_ROW = 5
 BIG_ROW = 1
 # gpio pin definitions
 L_BUTTON = 19
@@ -42,6 +43,7 @@ class Screen:
 	def __init__(self, rowcount = NO_OF_ROWS, rowlength = ROW_LENGTH, rotation = 0):
 		self.rowcount = rowcount
 		self.rowlength = rowlength
+		self.last_prog_row = LAST_PROG_ROW
 		self.rotation = rotation
 		self.disp = TFT.ILI9341(DC, rst=RST, spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=64000000))
 		self.disp.begin()

@@ -15,9 +15,14 @@ from time import gmtime, strftime
 RESET_PIN = 15
 DC_PIN    = 16
 #DC_PIN    = 0		# gpio17	pin11	
+ROWLENGTH = 20
+LAST_PROG_ROW = 2
 
-class Oled():
-	def __init__(self, rowcount):
+class Screen:
+	def __init__(self, rowcount = 4):
+		self.rowcount = rowcount
+		self.rowlength = ROWLENGTH
+		self.last_prog_row = LAST_PROG_ROW
 		self.led = gaugette.ssd1306.SSD1306(reset_pin=RESET_PIN, dc_pin=DC_PIN)
 		self.led.begin()
 		self.led.clear_display() # This clears the display but only when there is a led.display() as well!
@@ -27,21 +32,33 @@ class Oled():
 		self.led.draw_text2(0,0,'Init uoled',1)
 		self.led.display()
 		time.sleep(1)
-
+		
+	def info(self):
+		return(self.rowcount, self.rowlength)
+		
+	def write_button_labels(self):
+		# These are the botton labels. No labels with small display.
+		return(0)
+		
+	def write_radio_extras(self, clock, temperature):
+		self.writerow(self.rowcount-1,'{0:5s}{1:7.1f}^C'.format(clock.ljust(self.rowlength-9),float(temperature)))		
+		return(0)
+		
 	def writerow(self, row, string):
-		if row == 1:
-			x = 0
-			y = 0
-		if row == 2:
-			x = 0
-			y = 8
-		if row == 3:
-			x = 0
-			y = 16
-		if row == 4:
-			x = 0
-			y = 24
-		self.led.draw_text2(x,y,string,1)
-		self.led.display()
+		if row < self.rowcount:
+			if row == 0:
+				x = 0
+				y = 0
+			if row == 1:
+				x = 0
+				y = 8
+			if row == 2:
+				x = 0
+				y = 16
+			if row == 3:
+				x = 0
+				y = 24
+			self.led.draw_text2(x,y,string,1)
+			self.led.display()
 		return(0)
 		

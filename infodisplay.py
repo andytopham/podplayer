@@ -1,10 +1,10 @@
 #!/usr/bin/python
 ''' Richer Oled information.'''
-import subprocess, time, logging, datetime
+import subprocess, time, logging, datetime, sys
 from weather import Weather
 import config
 
-### Display layout
+### Display layout for tft
 # ROWS 0 to 3 = Prog info
 TITLE_ROW = 0	# for tft
 TIMING_ROW = 7
@@ -18,12 +18,24 @@ class InfoDisplay():
 	'''	Richer info on the oled. '''
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
-		if config.board == 'oled':
+		self.logger.info("Starting InfoDisplay class")
+		print 'board = ',config.board
+		if config.board == 'oled4':
 			import oled
-			self.myScreen = oled.Oled()
-		else:
+			self.myScreen = oled.Screen(4)
+		elif config.board == 'oled2':
+			import oled
+			self.myScreen = oled.Screen(2)
+		elif config.board == 'uoled':
+			import uoled
+			self.myScreen = uoled.Screen()
+		elif config.board == 'tft':
 			import tft
 			self.myScreen = tft.Screen()
+		else:
+			print 'No display specified in config file. Exiting.'
+			self.logger.error('No display specified in config file. Exiting.')
+			sys.exit()
 		self.rowcount, self.rowlength = self.myScreen.info()
 		self.myScreen.writerow(TITLE_ROW, 'Starting up...'.center(self.rowlength))
 		self.myWeather = Weather()
@@ -32,7 +44,8 @@ class InfoDisplay():
 		self.delta = 0.001
 
 	def writerow(self, row, string):
-		self.myScreen.writerow(row, string)
+		if row < self.rowcount:
+			self.myScreen.writerow(row, string)
 		
 	def update_info_row(self, temperature_refresh_needed=False):
 		'''Time and temperature display on the info line = bottom row'''
@@ -45,20 +58,19 @@ class InfoDisplay():
 			self.logger.warning('Error in update info row, part 1.')
 			return(1)
 		self.myScreen.write_radio_extras(clock, self.temperature)
-		self.myScreen.write_button_labels()
+		self.myScreen.write_button_labels(False, False)
 		return(0)
 	
 	def show_prog_info(self,string):
 		'''Display up to 2 rows from bottom of display of the program name and details.'''
 		self.logger.info('proginfo:'+string)
-		retstr = self._find_station_name(string)
+		retstr, string = self._find_station_name(string)
 		if retstr:						# if the station is recognised.
 			self.myScreen.writerow(TITLE_ROW,retstr.center(self.rowlength))
-			string = string[len(retstr)+4:]		# trim off the station name.
 		else:
 			self.myScreen.writerow(TITLE_ROW,string[:self.rowlength].ljust(self.rowlength))
 			string = string[self.rowlength:]	
-		for i in range(TITLE_ROW+1, self.rowcount-2):
+		for i in range(TITLE_ROW+1, self.myScreen.last_prog_row+1):
 			string = self._process_next_row(i,string)
 		return(0)
 		
@@ -78,10 +90,18 @@ class InfoDisplay():
 		''' Just recognise the BBC station.'''
 		a = string.split()
 		if a[0] == 'BBC':
-			retstr = a[0]+' '+a[2]+a[3]
-			return(retstr)
+			if a[3] == '6':
+				retstr = a[0]+' '+a[2]+a[3]+' '+a[4]
+				remainder = string[len(retstr)+4:]		# trim off the station name.
+			elif a[4] == 'Extra':					# BBC Radio 4 Extra
+				retstr = a[0]+' '+a[2]+a[3]+' '+a[4]
+				remainder = string[len(retstr)+4:]		# trim off the station name.
+			else:
+				retstr = a[0]+' '+a[2]+a[3]
+				remainder = string[len(retstr)+4:]		# trim off the station name.
+			return(retstr, remainder)
 		else:
-			return(False)
+			return(False, string)
 	
 	def displayvol(self, string):
 		self.myScreen.writerow(self.rowcount-1, string)	
@@ -110,10 +130,17 @@ class InfoDisplay():
 		return(0)
 
 	def writelabels(self, next = False, stop = False):
+		self.logger.info('writelabels')
 		self.myScreen.write_button_labels(next, stop)
 		return(0)
 		
 if __name__ == "__main__":
+	logging.basicConfig(filename='log/infodisplay.log',
+						filemode='w',
+						level=logging.WARNING)	#filemode means that we do not append anymore
+#	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
+	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running infodisplay class as a standalone app")
+
 	print 'Infodisplay test'		
 	myID = InfoDisplay()
 	print dir(myID)

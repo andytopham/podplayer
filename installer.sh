@@ -10,6 +10,8 @@ apt-get update
 apt-get -y upgrade
 apt-get -y install python-pip
 apt-get -y install python-serial mpd mpc rpi.gpio	
+# next one is needed for wiringpi2
+apt-get -y install python-dev
 echo 'pip installs...'
 pip install beautifulsoup4
 pip install requests
@@ -17,7 +19,21 @@ pip install python-mpd2
 pip install logging
 pip install feedparser
 pip install urllib3
+echo '** Installing pygame **'
+apt-get -y install python-pygame
+echo '** Installing wiringpi2 (needed for gaugette) **'
+pip install wiringpi2
+echo '** Installing gaugette **'
+git clone git://github.com/guyc/py-gaugette.git
+cd py-gaugette
+python setup.py install
+echo '** Installing Adafruit stuff **'
+cd /home/pi/master
+git clone git://github.com/adafruit/Adafruit_Python_ILI9341.git
+cd Adafruit_Python_ILI9341
+python setup.py install
 echo 'configure system files'
+cd /home/pi/master
 cp mpd.conf /etc
 cp startradio /etc/init.d
 chmod 755 /etc/init.d/startradio
