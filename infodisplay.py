@@ -13,6 +13,7 @@ NEXT_STATION_ROW = 8
 # radio extras
 # button labels
 ###
+SCROLL_PAUSE = -5
 
 class InfoDisplay():
 	'''	Richer info on the oled. '''
@@ -42,6 +43,7 @@ class InfoDisplay():
 		self.update_info_row(True)
 		self.lasttime = 0
 		self.delta = 0.001
+		self.scroll_pointer = SCROLL_PAUSE
 
 	def writerow(self, row, string):
 		if row < self.rowcount:
@@ -125,8 +127,13 @@ class InfoDisplay():
 		return(0)
 	
 	def scroll(self,row,string):
-		for i in range(len(string)+1):
-			self.myScreen.writerow(row,string[i:i+self.rowlength])
+		if self.scroll_pointer < 0:
+			self.myScreen.writerow(row,string[0:self.rowlength])
+		else:
+			self.myScreen.writerow(row,string[self.scroll_pointer:self.scroll_pointer+self.rowlength])
+		self.scroll_pointer += 1
+		if  self.scroll_pointer > len(string):
+			self.scroll_pointer = SCROLL_PAUSE
 		return(0)
 
 	def writelabels(self, next = False, stop = False):

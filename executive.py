@@ -64,8 +64,9 @@ class Executive:
 		'''Continuously cycle through all the possible events.'''
 		self.lasttime = time.time()		# has to be here to avoid long initial delay showing.
 		while True:
-#			if config.numberofrows == 2:
-#				time.sleep(.2)			# keep this inside try so that ctrl-c works here.		
+			if self.myInfoDisplay.rowcount < 3:
+				self.myInfoDisplay.scroll(0,self.programmename)
+				time.sleep(.2)			# keep this inside try so that ctrl-c works here.		
 			try:
 				self.process_timeouts()
 				reboot = self.process_button_presses()

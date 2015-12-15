@@ -24,26 +24,33 @@ AUDIOTIMEOUTFLAG = 4
 VOLUMETIMEOUTFLAG = 5
 DISPLAYTIMEOUTFLAG = 6
 SCROLL_ROW = 6
-#NEXTSW = 27
-#STOPSW = 24
-#VOLUP = 25
-#VOLDOWN = 4
-#PODMODESW = 22
-#PREVSW = 17
-NEXTSW = 17
-STOPSW = 22
-VOLUP = 25
-VOLDOWN = 4
-DUMMY1 = 18
-DUMMY2 = 24
+# Positional index into pins array
+NEXTSW = 0
+STOPSW = 1
+VOLUP =  2
+VOLDOWN = 3
+PODMODESW = 4
+PREVSW = 5
 
 class Gpio:
 	'''A class containing ways to handle the RPi gpio. '''
-	def __init__(self, switches = 'bigbox'):
+	def __init__(self, board = 'oled2'):
 		'''Initialise GPIO ports. '''
 		self.logger = logging.getLogger(__name__)
 		self.logger.info("Starting gpio class")
-		#initialise the variables
+		board = config.board
+		if board == 'oled4':
+			self.pins = [17,22,25,4,18,24]
+		elif board == 'oled2':
+			self.pins = [17,18,21,22,25,24]
+		elif board == 'slice':
+			self.pins = [17,18,21,22,23,24,25,4]		# slice of pi
+		elif board == 'tft':
+			self.pins = [19,4]							# tft
+		else:
+			self.logger.info('Error: switch definitions not included.')
+			print 'Error: switch definitions not included.'
+			sys.exit()		#initialise the variables
 		self.next = 0
 		self.stop = 0
 		self.vol = 0
@@ -53,17 +60,7 @@ class Gpio:
 		self.setupcallbacks()
 		self.maxelapsed = 0
 		self.button_pressed_time = datetime.datetime.now()
-		if switches == 'bigbox':
-#			print 'Next Stop Vol- Vol+'
-			self.pins = [NEXTSW, STOPSW, VOLDOWN, VOLUP, DUMMY1, DUMMY2]		# slice of pi
-		elif switches == 'slice':
-			self.pins = [17,18,21,22,23,24,25,4]		# slice of pi
-		elif switches == 'tft':
-			self.pins = [19,4]							# tft
-		else:
-			self.logger.info('Error: switch definitions not included.')
-			print 'Error: switch definitions not included.'
-			sys.exit()
+
 			
 	def rpi_rev(self):
 		return(GPIO.RPI_REVISION)
@@ -78,10 +75,10 @@ class Gpio:
 		# use P1 header pin numbering convention
 		GPIO.setmode(GPIO.BCM)
 		GPIO.setwarnings(True)
-		GPIO.setup(NEXTSW, GPIO.IN,  pull_up_down=GPIO.PUD_UP)
-		GPIO.setup(STOPSW, GPIO.IN,  pull_up_down=GPIO.PUD_UP)
-		GPIO.setup(VOLUP, GPIO.IN,  pull_up_down=GPIO.PUD_UP)
-		GPIO.setup(VOLDOWN, GPIO.IN,  pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(self.pins[NEXTSW], GPIO.IN,  pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(self.pins[STOPSW], GPIO.IN,  pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(self.pins[VOLUP], GPIO.IN,  pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(self.pins[VOLDOWN], GPIO.IN,  pull_up_down=GPIO.PUD_UP)
 		return()
 
 	def pressednext(self,channel):
@@ -116,10 +113,10 @@ class Gpio:
 		BOUNCETIME=100
 #		BOUNCETIME=20
 		try:
-			GPIO.add_event_detect(NEXTSW, GPIO.FALLING, callback=self.pressednext, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(STOPSW, GPIO.FALLING, callback=self.pressedstop, bouncetime=BOUNCETIME)	
-			GPIO.add_event_detect(VOLUP, GPIO.FALLING, callback=self.pressedvolup, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(VOLDOWN, GPIO.FALLING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)	
+			GPIO.add_event_detect(self.pins[NEXTSW], GPIO.FALLING, callback=self.pressednext, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(self.pins[STOPSW], GPIO.FALLING, callback=self.pressedstop, bouncetime=BOUNCETIME)	
+			GPIO.add_event_detect(self.pins[VOLUP], GPIO.FALLING, callback=self.pressedvolup, bouncetime=BOUNCETIME)
+			GPIO.add_event_detect(self.pins[VOLDOWN], GPIO.FALLING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)	
 		except:
 			self.logger.error('Failed to add edge detection. Must be run as root.')
 			print 'Failed to add edge detection. Must be run as root.'
@@ -129,7 +126,7 @@ class Gpio:
 	def checkforstuckswitches(self):
 		'''Check that the gpio switches are not stuck in one state.'''
 		self.logger.debug("def gpio checkforstuckswitches")
-		in17 = GPIO.input(NEXTSW)
+		in17 = GPIO.input(self.pins[NEXTSW])
 		if in17 == self.PRESSED:
 			self.logger.debug("pressed next sw")
 			stuck = 1
@@ -137,21 +134,21 @@ class Gpio:
 			sofar = datetime.datetime.now()
 			while sofar-start < datetime.timedelta(seconds=2):	# chk for 2 seconds
 				sofar = datetime.datetime.now()
-				in17 = GPIO.input(NEXTSW)
+				in17 = GPIO.input(self.pins[NEXTSW])
 				if in17 != self.PRESSED:
 					stuck = 0
 			if stuck == 1:
 				print "** Error: stuck next switch **"
 				self.logger.error("Stuck next switch")
 				return(stuck)
-		in18 = GPIO.input(STOPSW)
+		in18 = GPIO.input(self.pins[STOPSW])
 		if in18 == self.PRESSED:
 			stuck = 1
 			start = datetime.datetime.now()
 			sofar = datetime.datetime.now()
 			while sofar-start < datetime.timedelta(seconds=2):	# chk for 2 seconds
 				sofar = datetime.datetime.now()
-				in18 = GPIO.input(STOPSW)
+				in18 = GPIO.input(self.pins[STOPSW])
 				if in18 != self.PRESSED:
 					stuck = 0
 			if stuck == 1:
@@ -164,7 +161,7 @@ class Gpio:
 		''' Call this after a delay after detecting the next button is pressed.
 			If the button is still pressed, then return 1. '''
 		time.sleep(delay)
-		in17 = GPIO.input(NEXTSW)
+		in17 = GPIO.input(self.pins[NEXTSW])
 		if in17 == PRESSED:
 			self.pod = 1
 			return(1)
@@ -174,7 +171,7 @@ class Gpio:
 		''' Call this after a delay after detecting the stop button is pressed.
 			If the button is still pressed, then return 1. '''
 		time.sleep(delay)
-		in18 = GPIO.input(STOPSW)
+		in18 = GPIO.input(self.pins[STOPSW])
 		if in18 == PRESSED:
 			self.reboot = 1
 			return(1)
@@ -184,7 +181,7 @@ class Gpio:
 		''' Call this after a delay after detecting the volup button is pressed.
 			If the button is still pressed, then return 1. '''
 		time.sleep(delay)
-		if GPIO.input(VOLUP) == PRESSED:
+		if GPIO.input(self.pins[VOLUP]) == PRESSED:
 			return(True)
 		return(False)
 
@@ -192,7 +189,7 @@ class Gpio:
 		''' Call this after a delay after detecting the volup button is pressed.
 			If the button is still pressed, then return 1. '''
 		time.sleep(delay)
-		if GPIO.input(VOLDOWN) == PRESSED:
+		if GPIO.input(self.pins[VOLDOWN]) == PRESSED:
 			return(True)
 		return(False)
 				

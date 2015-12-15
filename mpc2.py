@@ -38,7 +38,7 @@ class Mpc:
 			self.logger.error('No BBC stations loaded.')
 			print '**Error: No BBC stations loaded. **'
 		self.updatedb()						# just run this occasionally
-		self.setvol(70)
+		self.setvol(40)
 		self.play()
 
 	def _start_mpd(self):
