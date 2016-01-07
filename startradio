@@ -4,5 +4,7 @@
 
 # This sleep is needed to the pi2, since network does not seem to be ready.
 sleep 10
+# Need to move to this directory, otherwise log files have nowhere to go.
+cd /home/pi/master/podplayer
 python /home/pi/master/podplayer/radio.py &
 
