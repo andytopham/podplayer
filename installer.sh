@@ -7,7 +7,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 echo "apt-get installs"
 apt-get update
-apt-get -y upgrade
+# apt-get -y upgrade
 apt-get -y install python-pip
 apt-get -y install python-serial mpd mpc rpi.gpio	
 # next one is needed for wiringpi2
