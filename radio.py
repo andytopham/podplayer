@@ -6,7 +6,7 @@ import time, datetime, argparse, logging
 # from gpio import Gpio
 import executive
 
-LOGFILE = 'log/radio.log'
+LOGFILE = '/home/pi/master/podplayer/log/radio.log'
 VERSION = '6.1'
 
 ''' 

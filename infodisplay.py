@@ -2,7 +2,8 @@
 ''' Richer Oled information.'''
 import subprocess, time, logging, datetime, sys
 from weather import Weather
-import config
+import keys
+
 
 ### Display layout for tft
 # ROWS 0 to 3 = Prog info
@@ -20,22 +21,22 @@ class InfoDisplay():
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
 		self.logger.info("Starting InfoDisplay class")
-		print 'board = ',config.board
-		if config.board == 'oled4':
+		print 'board = ',keys.board
+		if keys.board == 'oled4':
 			import oled
 			self.myScreen = oled.Screen(4)
-		elif config.board == 'oled2':
+		elif keys.board == 'oled2':
 			import oled
 			self.myScreen = oled.Screen(2)
-		elif config.board == 'uoled':
+		elif keys.board == 'uoled':
 			import uoled
 			self.myScreen = uoled.Screen()
-		elif config.board == 'tft':
+		elif keys.board == 'tft':
 			import tft
 			self.myScreen = tft.Screen()
 		else:
-			print 'No display specified in config file. Exiting.'
-			self.logger.error('No display specified in config file. Exiting.')
+			print 'No display specified in keys file. Exiting.'
+			self.logger.error('No display specified in keys file. Exiting.')
 			sys.exit()
 		self.rowcount, self.rowlength = self.myScreen.info()
 		self.myScreen.writerow(TITLE_ROW, 'Starting up...'.center(self.rowlength))
@@ -55,7 +56,7 @@ class InfoDisplay():
 			clock = time.strftime("%R")
 			self.logger.info('Update info row:'+clock)
 			if temperature_refresh_needed:
-				self.temperature = self.myWeather.wunder(config.key, config.locn)
+				self.temperature = self.myWeather.wunder(keys.key, keys.locn)
 		except:
 			self.logger.warning('Error in update info row, part 1.')
 			return(1)

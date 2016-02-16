@@ -32,8 +32,8 @@ cd /home/pi/master
 git clone git://github.com/adafruit/Adafruit_Python_ILI9341.git
 cd Adafruit_Python_ILI9341
 python setup.py install
-echo 'configure system files'
-cd /home/pi/master
+echo 'Configure system files'
+cd /home/pi/master/podplayer
 cp mpd.conf /etc
 cp startradio /etc/init.d
 chmod 755 /etc/init.d/startradio

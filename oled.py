@@ -13,7 +13,7 @@
 '''
 import serial
 import subprocess, time, logging, datetime
-import config
+# import config
 
 LOGFILE = 'log/oled.log'
 ROWLENGTH4 = 20

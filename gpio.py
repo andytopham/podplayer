@@ -7,7 +7,7 @@ import time, datetime, logging, subprocess, sys
 import timeout, infodisplay
 from mpc2 import Mpc
 from system import System
-import config			# needed for the number of oled rows
+import keys			# needed for the number of oled rows
 
 BUTTONNONE = 0
 BUTTONNEXT = 1
@@ -38,7 +38,7 @@ class Gpio:
 		'''Initialise GPIO ports. '''
 		self.logger = logging.getLogger(__name__)
 		self.logger.info("Starting gpio class")
-		board = config.board
+		board = keys.board
 		if board == 'oled4':
 			self.pins = [17,22,25,4,18,24]
 		elif board == 'oled2':

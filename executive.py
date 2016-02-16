@@ -8,7 +8,7 @@ import timeout, infodisplay
 from mpc2 import Mpc
 from system import System
 import gpio
-import config			# needed for the number of oled rows
+# import config			# needed for the number of oled rows
 
 BUTTONNONE = 0
 BUTTONNEXT = 1

@@ -5,7 +5,7 @@ import datetime
 import argparse
 import logging
 import subprocess
-import config		# the hardware and constants file
+# import config		# the hardware and constants file
 
 LOGFILE = '/home/pi/podplayer/log/'
 
