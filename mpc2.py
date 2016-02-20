@@ -35,9 +35,6 @@ class Mpc:
 		self.logger.info("python-mpd2 version:"+self.client.mpd_version)
 		self.myBBC = BBCradio(self.client)
 		self.myBBC.start()
-#		if self.myBBC.load(self.client) == -1:
-#			self.logger.error('No BBC stations loaded.')
-#			print '**Error: No BBC stations loaded. **'
 		self.updatedb()						# just run this occasionally
 		self.setvol(40)
 		self.station = 0

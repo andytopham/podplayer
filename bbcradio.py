@@ -38,7 +38,6 @@ class BBCradio(threading.Thread):
 			if self.load(self.mpd_channel) != 0:
 				print 'BBC load error.'
 				raise RunError(0)
-#			print 'BBC load count:',self.load_count
 			time.sleep(2)			# temporary
 			myevent = self.Event.wait(60*60)		# wait for this timeout or the flag being set.
 		print 'BBC exiting.'
@@ -47,7 +46,6 @@ class BBCradio(threading.Thread):
 		'''Return the number of radio station urls.'''
 		self.logger.info("Counting stations. Count="+str(len(self.urls)))
 		return(len(self.urls))
-#		return(self.stationcount)
 		
 	def _refresh_pls_files(self):
 		try:

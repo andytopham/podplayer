@@ -6,6 +6,7 @@ import gaugette.ssd1306
 import time
 import sys
 from time import gmtime, strftime
+import threading, Queue
 
 # Setting some variables for our reset pin etc.
 # This numbering comes from wiringpi.
@@ -18,8 +19,12 @@ DC_PIN    = 16
 ROWLENGTH = 20
 LAST_PROG_ROW = 2
 
-class Screen:
+class Screen(threading.Thread):
 	def __init__(self, rowcount = 4):
+		self.Event = threading.Event()
+		self.threadLock = threading.Lock()
+		threading.Thread.__init__(self, name='myuoled')
+		self.q = Queue.Queue(maxsize=6)
 		self.rowcount = rowcount
 		self.rowlength = ROWLENGTH
 		self.last_prog_row = LAST_PROG_ROW
@@ -32,6 +37,14 @@ class Screen:
 		self.led.draw_text2(0,0,'Init uoled',1)
 		self.led.display()
 		time.sleep(1)
+	
+	def run(self):
+		while not myevent:
+			while not self.q.empty():
+				self.writerow(self.q.get())		# items on q must be row,string pairs
+				self.q.task_done()
+				myevent = self.Event.wait(1)	# wait for this timeout or the flag being set.
+		print 'Uoled exiting'
 	
 	def clear(self):
 		self.led.clear_display() # This clears the display but only when there is a led.display() as well!

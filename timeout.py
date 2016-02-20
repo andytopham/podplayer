@@ -6,23 +6,23 @@ import time, datetime, logging
 # Timeout values, all in minutes except where stated
 OLEDTIMEOUT = 1
 # TEMPERATURETIMEOUT = 15
-STATIONTIMEOUT = 240
-AUDIOTIMEOUT = 30
+# STATIONTIMEOUT = 240
+AUDIOTIMEOUT = 45
 VOLUMETIMEOUT = 4		# seconds
 DISPLAYTIMEOUT = 120		# seconds
 
 # verbose ones
 VOLEDTIMEOUT = 1
 # VTEMPERATURETIMEOUT = 15
-VSTATIONTIMEOUT = 240
-VAUDIOTIMEOUT = 30
+# VSTATIONTIMEOUT = 240
+VAUDIOTIMEOUT = 45
 VVOLUMETIMEOUT = 4		# seconds
 VDISPLAYTIMEOUT = 20
 
 # Timeout flags
 UPDATEOLEDFLAG = 1
 # UPDATETEMPERATUREFLAG = 2
-UPDATESTATIONFLAG = 3
+# UPDATESTATIONFLAG = 3
 AUDIOTIMEOUTFLAG = 4
 VOLUMETIMEOUTFLAG = 5
 DISPLAYTIMEOUTFLAG = 6
@@ -33,26 +33,21 @@ class Timeout:
 		self.logger.info('Setting timeouts: verbose='+str(verbose))
 		if verbose == 1:
 			self.logger.info('Timeouts(mins): OLED='+str(VOLEDTIMEOUT)
-				+' Station='+str(VSTATIONTIMEOUT)
 				+' AudioTimeout='+str(VAUDIOTIMEOUT))
 			self.oledupdatefreq = datetime.timedelta(minutes=VOLEDTIMEOUT)
-			self.stationupdatefreq = datetime.timedelta(minutes=VSTATIONTIMEOUT)	# a wild guess at how often the bbc change the key
 			self.audiotimeoutfreq = datetime.timedelta(minutes=VAUDIOTIMEOUT)
 			self.volumetimeoutfreq = datetime.timedelta(seconds=VVOLUMETIMEOUT)
 			self.displaytimeoutfreq = datetime.timedelta(seconds=DISPLAYTIMEOUT)
 		else:
 			self.logger.info('Timeouts(mins): OLED='+str(OLEDTIMEOUT)
-				+' Station='+str(STATIONTIMEOUT)
 				+' AudioTimeout='+str(AUDIOTIMEOUT))
 			self.oledupdatefreq = datetime.timedelta(minutes=OLEDTIMEOUT)
-			self.stationupdatefreq = datetime.timedelta(minutes=STATIONTIMEOUT)	# a wild guess at how often the bbc change the key
 			self.audiotimeoutfreq = datetime.timedelta(minutes=AUDIOTIMEOUT)
 			self.volumetimeoutfreq = datetime.timedelta(seconds=VOLUMETIMEOUT)
 			self.displaytimeoutfreq = datetime.timedelta(seconds=DISPLAYTIMEOUT)
 		#initialise timers
 		self.start = datetime.datetime.now()
 		self.oledlastupdate = datetime.datetime.now()
-		self.stationstart = datetime.datetime.now()
 		self.audiostart = datetime.datetime.now()
 		self.volumestart = datetime.datetime.now()
 		self.verbosity = verbose
@@ -64,10 +59,6 @@ class Timeout:
 			self.logger.info('Timeout: oled')
 			self.start = datetime.datetime.now()
 			return(UPDATEOLEDFLAG)
-		if (now - self.stationstart) > self.stationupdatefreq:
-			self.logger.info('Timeout: station')
-			self.stationstart = datetime.datetime.now()
-			return(UPDATESTATIONFLAG)
 		if (now - self.audiostart) > self.audiotimeoutfreq:
 			self.logger.warning('Audio timeout at '
 								+datetime.datetime.now().strftime('%H:%M'))

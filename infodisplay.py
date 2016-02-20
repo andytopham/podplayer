@@ -53,8 +53,11 @@ class InfoDisplay():
 	
 	def writerow(self, row, string):
 		if row < self.rowcount:
-			self.myScreen.writerow(row, string)
-		
+			self.myScreen.q.put((row, string))	# add to the queue
+
+	def end_display(self):
+		self.myScreen.Event.set()			# send the stop signal
+	
 	def update_info_row(self):
 		'''Time and temperature display on the info line = bottom row'''
 		clock = time.strftime("%R")

@@ -13,7 +13,7 @@
 '''
 import serial
 import subprocess, time, logging, datetime
-# import config
+import threading, Queue
 
 LOGFILE = 'log/oled.log'
 ROWLENGTH4 = 20
@@ -21,9 +21,13 @@ ROWLENGTH2 = 16
 LAST_PROG_ROW4 = 2
 LAST_PROG_ROW2 = 0
 
-class Screen:
+class Screen(threading.Thread):
 	'''	Oled class. Routines for driving the serial oled. '''
 	def __init__(self, rows = 4):
+		self.Event = threading.Event()
+		self.threadLock = threading.Lock()
+		threading.Thread.__init__(self, name='myoled')
+		self.q = Queue.Queue(maxsize=6)
 		self.rowcount = rows
 		if rows == 4:
 			self.rowlength = ROWLENGTH4
@@ -42,6 +46,14 @@ class Screen:
 		self.rowselect = [128,192,148,212]	# the addresses of the start of each row
 		self.start=0
 		self.initialise()
+
+	def run(self):
+		while not myevent:
+			while not self.q.empty():
+				self.writerow(self.q.get())		# items on q must be row,string pairs
+				self.q.task_done()
+				myevent = self.Event.wait(1)	# wait for this timeout or the flag being set.
+		print 'Oled exiting'
 	
 	def initialise(self):
 #		self.port.open()

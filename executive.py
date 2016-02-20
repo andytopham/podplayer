@@ -21,7 +21,7 @@ BUTTONHALT = 7
 PRESSED = False		# decides which edge the button works on
 UPDATEOLEDFLAG = 1
 # UPDATETEMPERATUREFLAG = 2
-UPDATESTATIONFLAG = 3
+# UPDATESTATIONFLAG = 3
 AUDIOTIMEOUTFLAG = 4
 VOLUMETIMEOUTFLAG = 5
 DISPLAYTIMEOUTFLAG = 6
@@ -69,7 +69,10 @@ class Executive:
 		self.logger.error(string)
 		self.myMpc.cleanup()
 		self.myGpio.cleanup()
+		time.sleep(2)
 		self.myInfoDisplay.writerow(0,string)
+		time.sleep(2)
+		self.myInfoDisplay.end_display()
 		sys.exit(0)
 	
 	def master_loop(self):
@@ -122,12 +125,6 @@ class Executive:
 				remaining = self.myMpc.check_time_left()
 				self.myInfoDisplay.update_info_row(False)	# this has to be here to update time
 				self.programmename = self.myMpc.progname()
-			if timeout_type == UPDATESTATIONFLAG:
-				# handle the bbc links going stale
-				if self.myMpc.loadbbc():			# failed
-					time.sleep(1)					# wait to try again
-					if self.myMpc.loadbbc():		# failed again
-						return(1)
 				self.myMpc.recover_playing()
 				if self.mySystem.disk_usage():
 					self.myInfoDisplay.writerow(1, 'Out of disk.')
