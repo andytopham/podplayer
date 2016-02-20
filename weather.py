@@ -6,14 +6,30 @@ import urllib2
 import json
 import logging
 import datetime
+import threading, time
+import keys
 
-class Weather:
-	def __init__(self):
+class Weather(threading.Thread):
+	def __init__(self, key, locn):
+		self.Event = threading.Event()
+		threading.Thread.__init__(self, name='myweather')
 		self.logger = logging.getLogger(__name__)
-		temperature = 0
-
+		self.key = key
+		self.locn = locn
+		self.wunder_temperature = 0
+		
+	def run(self):
+		print 'Starting weather thread'
+		myevent = False
+		while not myevent:
+			self.wunder_temperature = self.wunder(self.key, self.locn)
+			print 'Read temp:',self.wunder_temperature
+			time.sleep(6)			# temporary - the max allowed per min by wunder
+			myevent = self.Event.wait(15*60)		# wait for this timeout or the flag being set.
+		print 'Weather exiting.'
+			
 	def gettemperature(self,bbckey):
-		self.logger.debug("Fetching temperature")
+		self.logger.debug("Fetching bbc temperature")
 		try:
 			string = 'http://open.live.bbc.co.uk/weather/feeds/en/'+bbckey+'/observations.rss'
 			soup = BeautifulSoup(requests.get(string).text,"html.parser")
@@ -59,6 +75,19 @@ if __name__ == "__main__":
 					". Running weather class as a standalone app")
 
 	print "Fetching weather info"
-	myWeather = weather()
-	myWeather.wunder()
+	myWeather = Weather(keys.key, keys.locn)
+	myWeather.start()
+	print 'Wunder thread now running'
+	print 'Current threads'
+	print threading.enumerate()
+	time.sleep(5)
+	if myWeather.is_alive:
+		print 'Weather still alive'
+	myWeather.Event.set()			# send the stop signal
+	time.sleep(3)
+	if myWeather.is_alive:
+		print 'Weather still alive'
+	print threading.enumerate()
+	print 'Ending main.'
+#	myWeather.wunder()
 	

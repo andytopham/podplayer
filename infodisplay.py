@@ -40,27 +40,26 @@ class InfoDisplay():
 			sys.exit()
 		self.rowcount, self.rowlength = self.myScreen.info()
 		self.myScreen.writerow(TITLE_ROW, 'Starting up...'.center(self.rowlength))
-		self.myWeather = Weather()
-		self.update_info_row(True)
+		self.myWeather = Weather(keys.key, keys.locn)
+		self.myWeather.start()
+		self.update_info_row()
 		self.lasttime = 0
 		self.delta = 0.001
 		self.scroll_pointer = SCROLL_PAUSE
 
+	def cleanup(self):
+		self.myWeather.Event.set()			# send the stop signal
+		self.myScreen.clear()
+	
 	def writerow(self, row, string):
 		if row < self.rowcount:
 			self.myScreen.writerow(row, string)
 		
-	def update_info_row(self, temperature_refresh_needed=False):
+	def update_info_row(self):
 		'''Time and temperature display on the info line = bottom row'''
-		try:
-			clock = time.strftime("%R")
-			self.logger.info('Update info row:'+clock)
-			if temperature_refresh_needed:
-				self.temperature = self.myWeather.wunder(keys.key, keys.locn)
-		except:
-			self.logger.warning('Error in update info row, part 1.')
-			return(1)
-		self.myScreen.write_radio_extras(clock, self.temperature)
+		clock = time.strftime("%R")
+		self.logger.info('Update info row:'+clock)
+		self.myScreen.write_radio_extras(clock, self.myWeather.wunder_temperature)
 		self.myScreen.write_button_labels(False, False)
 		return(0)
 	
@@ -151,7 +150,12 @@ if __name__ == "__main__":
 
 	print 'Infodisplay test'		
 	myID = InfoDisplay()
-	print dir(myID)
+#	print dir(myID)
 	myID.show_prog_info('This is a very long text string to test where the programme information would normally be printed.')
-	myID.scroll(6,'This is a very long text string to test where the programme information would normally be printed.')
+#	myID.scroll(6,'This is a very long text string to test where the programme information would normally be printed.')
+	print 'Weather thread has been forked.'
+	
+	myID.cleanup()
+	print 'Weather has been told to stop.'
+	print 'Main prog is finished.'
 	

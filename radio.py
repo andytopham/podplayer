@@ -7,7 +7,7 @@ import time, datetime, argparse, logging
 import executive
 
 LOGFILE = '/home/pi/master/podplayer/log/radio.log'
-VERSION = '6.1'
+VERSION = '6.2'
 
 ''' 
 Class structure (ignoring library calls)

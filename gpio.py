@@ -47,10 +47,13 @@ class Gpio:
 			self.pins = [17,18,21,22,23,24,25,4]		# slice of pi
 		elif board == 'tft':
 			self.pins = [19,4]							# tft
+		elif board == 'uoled':
+			self.pins = [17,18,21,22]		# not really, just for testing.
 		else:
 			self.logger.info('Error: switch definitions not included.')
+			print 'Gpio error: board type not defined.'
 			print 'Error: switch definitions not included.'
-			sys.exit()		#initialise the variables
+			raise InitError(0)		
 		self.next = 0
 		self.stop = 0
 		self.vol = 0

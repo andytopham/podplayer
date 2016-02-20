@@ -1,15 +1,11 @@
 #!/usr/bin/python
 ''' Load BBC radio stations into mpd.'''
-import re
-import subprocess
-import time
-import logging
-import datetime
-import requests
+import re, subprocess, time, logging, datetime, requests
 from bs4 import BeautifulSoup
 import mpd
+import threading
 
-class BBCradio:
+class BBCradio(threading.Thread):
 	# These are the indicies to the url array.
 	URLID = 0
 	URLSTREAM = 1
@@ -26,11 +22,26 @@ class BBCradio:
 #			["BBCR5",		"bbc5live.pls",		"http://www.bbc.co.uk/radio/player/bbc_radio_five_live"],
 			["BBCR6",		"bbc6music.pls",	"http://www.bbc.co.uk/radio/player/bbc_6music"]
 			]		
-	def __init__(self):
+	def __init__(self, mpd_channel):
+		self.Event = threading.Event()
+		threading.Thread.__init__(self, name='mybbc')
+		self.mpd_channel = mpd_channel
 		self.logger = logging.getLogger(__name__)
 		self.expiry_times = [None]*6
 		self.stationcount = 0
 		__all__ = ['stationcounter', 'load', 'stationname']		# list the functions available here
+
+	def run(self):
+		print 'Starting bbc collection.'
+		myevent = False
+		while not myevent:
+			if self.load(self.mpd_channel) != 0:
+				print 'BBC load error.'
+				raise RunError(0)
+#			print 'BBC load count:',self.load_count
+			time.sleep(2)			# temporary
+			myevent = self.Event.wait(60*60)		# wait for this timeout or the flag being set.
+		print 'BBC exiting.'
 
 	def stationcounter(self):
 		'''Return the number of radio station urls.'''
@@ -153,7 +164,7 @@ class BBCradio:
 				self.logger.warning("Failed to add file to playlist: "+line[6:])
 				return(-1)
 		self.logger.info('Loaded BBC stations.')
-		print 'Loaded BBC stations.'
+		print 'Loaded BBC stations:', self.stationcount
 		return(0)
 		
 	def _get_end_time(self,i, link):

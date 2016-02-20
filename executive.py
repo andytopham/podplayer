@@ -3,7 +3,7 @@
 # The main podplayer looping structure.
 
 # import RPi.GPIO as GPIO
-import time, datetime, logging, subprocess
+import time, datetime, logging, subprocess, sys
 import timeout, infodisplay
 from mpc2 import Mpc
 from system import System
@@ -20,7 +20,7 @@ BUTTONREBOOT = 6
 BUTTONHALT = 7
 PRESSED = False		# decides which edge the button works on
 UPDATEOLEDFLAG = 1
-UPDATETEMPERATUREFLAG = 2
+# UPDATETEMPERATUREFLAG = 2
 UPDATESTATIONFLAG = 3
 AUDIOTIMEOUTFLAG = 4
 VOLUMETIMEOUTFLAG = 5
@@ -48,17 +48,29 @@ class Executive:
 		self.myInfoDisplay = infodisplay.InfoDisplay()
 		self.myMpc = Mpc()
 		self.mySystem = System()
-		self.myGpio = gpio.Gpio()
+		try:
+			self.myGpio = gpio.Gpio()
+		except:
+			self.cleanup('Failed to start gpio')
 		host = self.mySystem.return_hostname()
 		self.myInfoDisplay.writerow(1,host)
 		self.myTimeout = timeout.Timeout(verbosity)
 		self.programmename = self.myMpc.progname()
 		remaining = self.myMpc.check_time_left()
 		# First display set here
-		self.myInfoDisplay.update_info_row(False)
+		self.myInfoDisplay.update_info_row()
 		self.show_station()
 		self.programmename = self.myMpc.progname()
 		self.myInfoDisplay.show_prog_info(self.programmename)
+	
+	def cleanup(self, string):
+		print string
+		self.myInfoDisplay.cleanup()	# needed to stop weather polling.
+		self.logger.error(string)
+		self.myMpc.cleanup()
+		self.myGpio.cleanup()
+		self.myInfoDisplay.writerow(0,string)
+		sys.exit(0)
 	
 	def master_loop(self):
 		'''Continuously cycle through all the possible events.'''
@@ -71,24 +83,13 @@ class Executive:
 				self.process_timeouts()
 				reboot = self.process_button_presses()
 				if reboot == 1:
-					self.myGpio.cleanup()
-					return(1)
+					self.cleanup('Reboot')		# need to add to this!
 			except KeyboardInterrupt:
-				print 'Keyboard interrupt'
-				self.logger.warning('Keyboard interrupt')
-				self.myInfoDisplay.writerow(1,'Keyboard stop.      ')
-				self.myMpc.stop()
-				self.myGpio.cleanup()
-				return(1)
+				self.cleanup('Keyboard interrupt')
 			except:			# all other errors - should never get here
-				print 'Unknown error in master loop'
-				self.myInfoDisplay.writerow(0,'Master loop err.')
-				self.logger.error('Unknown error in master loop.')
-				self.myMpc.stop()
-				self.myGpio.cleanup()
-				return(1)
+				self.cleanup('Master loop error')
 
-	def show_time_taken(self):
+	def _show_time_taken(self):
 		now = time.time()
 		elapsed = now - self.lasttime
 		self.myInfoDisplay.show_timings(elapsed,self.maxelapsed)
@@ -97,7 +98,7 @@ class Executive:
 		self.lasttime = now
 		return(0)
 	
-	def show_next_station(self):
+	def _show_next_station(self):
 		prog = self.myMpc.next_station()
 		self.myInfoDisplay.show_next_station(prog)
 		return(0)
@@ -121,8 +122,6 @@ class Executive:
 				remaining = self.myMpc.check_time_left()
 				self.myInfoDisplay.update_info_row(False)	# this has to be here to update time
 				self.programmename = self.myMpc.progname()
-			if timeout_type == UPDATETEMPERATUREFLAG:
-				self.myInfoDisplay.update_info_row(True)
 			if timeout_type == UPDATESTATIONFLAG:
 				# handle the bbc links going stale
 				if self.myMpc.loadbbc():			# failed

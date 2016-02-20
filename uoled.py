@@ -32,12 +32,24 @@ class Screen:
 		self.led.draw_text2(0,0,'Init uoled',1)
 		self.led.display()
 		time.sleep(1)
-		
+	
+	def clear(self):
+		self.led.clear_display() # This clears the display but only when there is a led.display() as well!
+		time.sleep(.5)
+		self.led.display()
+		time.sleep(1)		# this really is needed!
+	
 	def info(self):
 		return(self.rowcount, self.rowlength)
 		
-	def write_button_labels(self):
+	def write_button_labels(self, next, stop):
 		# These are the botton labels. No labels with small display.
+		if next == True:
+			self.logger.info('write_button_labels. Next')
+			self.writerow(0,'Next            ')
+		if stop == True:
+			self.logger.info('write_button_labels. Stop')
+			self.writerow(0,'Stop            ')		
 		return(0)
 		
 	def write_radio_extras(self, clock, temperature):

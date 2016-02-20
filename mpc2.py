@@ -33,12 +33,16 @@ class Mpc:
 		self.client.connect("localhost", 6600)
 		self.client.clear()
 		self.logger.info("python-mpd2 version:"+self.client.mpd_version)
-		self.myBBC = BBCradio()
-		if self.myBBC.load(self.client) == -1:
-			self.logger.error('No BBC stations loaded.')
-			print '**Error: No BBC stations loaded. **'
+		self.myBBC = BBCradio(self.client)
+		self.myBBC.start()
+#		if self.myBBC.load(self.client) == -1:
+#			self.logger.error('No BBC stations loaded.')
+#			print '**Error: No BBC stations loaded. **'
 		self.updatedb()						# just run this occasionally
 		self.setvol(40)
+		self.station = 0
+		while self.myBBC.stationcount == 0:	# wait for the first station to be ready
+			time.sleep(1)
 		self.play()
 
 	def _start_mpd(self):
@@ -52,6 +56,10 @@ class Mpc:
 		self.updatedb()						# just run this occasionally
 		print 'mpd connected'
 		return(0)
+		
+	def cleanup(self):
+		self.stop()
+		self.myBBC.Event.set()			# send the stop signal
 		
 	def next_station(self):
 		no_of_stations = self.myBBC.stationcounter()
