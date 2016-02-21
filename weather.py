@@ -67,9 +67,7 @@ class Weather(threading.Thread):
 		return(str(temp_c))
 		
 if __name__ == "__main__":
-	logging.basicConfig(filename='log/weather.log',
-						filemode='w',
-						level=logging.WARNING)	#filemode means that we do not append anymore
+	logging.basicConfig(filename='log/weather.log', filemode='w', level=logging.WARNING)	#filemode means that we do not append anymore
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+
 					". Running weather class as a standalone app")

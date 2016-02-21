@@ -7,7 +7,7 @@ import logging
 import subprocess
 # import config		# the hardware and constants file
 
-LOGFILE = '/home/pi/podplayer/log/'
+LOGFILE = 'log/system.log'
 
 class System:
 	'''Return state of OS stability'''
@@ -39,9 +39,7 @@ if __name__ == "__main__":
 	'''Print disk usage.'''
 #	print "Running system class as a standalone app"
 	print __doc__
-	logging.basicConfig(filename=LOGFILE+'system.log',
-						filemode='w',
-						level=logging.INFO)	#filemode means that we do not append anymore
+	logging.basicConfig(filename=LOGFILE, filemode='w', level=logging.INFO)	#filemode means that we do not append anymore
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running system class as a standalone app")
 

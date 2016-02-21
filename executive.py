@@ -2,13 +2,12 @@
 # executive.py
 # The main podplayer looping structure.
 
-# import RPi.GPIO as GPIO
 import time, datetime, logging, subprocess, sys
-import timeout, infodisplay
+import timeout, infodisplay, keyboardpoller
 from mpc2 import Mpc
 from system import System
 import gpio
-# import config			# needed for the number of oled rows
+import threading
 
 BUTTONNONE = 0
 BUTTONNEXT = 1
@@ -19,10 +18,8 @@ BUTTONMODE = 5
 BUTTONREBOOT = 6
 BUTTONHALT = 7
 PRESSED = False		# decides which edge the button works on
-UPDATEOLEDFLAG = 1
-# UPDATETEMPERATUREFLAG = 2
-# UPDATESTATIONFLAG = 3
-AUDIOTIMEOUTFLAG = 4
+# UPDATEOLEDFLAG = 1
+# AUDIOTIMEOUTFLAG = 4
 VOLUMETIMEOUTFLAG = 5
 DISPLAYTIMEOUTFLAG = 6
 SCROLL_ROW = 6
@@ -33,64 +30,105 @@ class Executive:
 		self.logger = logging.getLogger(__name__)
 		self.logger.info("Starting executive class")
 		#initialise the variables
-		self.next = 0
-		self.stop = 0
+		self.die = False
+		self.next = False
+		self.stop = False
+		self.volup = False
+		self.voldown = False
 		self.vol = 0
 		self.pod = 0
 		self.chgvol_flag = 0
-#		self.setup()
-#		self.setupcallbacks()
 		self.maxelapsed = 0
 		self.button_pressed_time = datetime.datetime.now()
 
 	def startup(self, verbosity):
 		'''Initialisation for the objects that have variable startup behaviour'''
 		self.myInfoDisplay = infodisplay.InfoDisplay()
+		self.myKey = keyboardpoller.KeyboardPoller()
+		self.myKey.start()
 		self.myMpc = Mpc()
-		self.mySystem = System()
 		try:
 			self.myGpio = gpio.Gpio()
 		except:
 			self.cleanup('Failed to start gpio')
+		self.mySystem = System()
 		host = self.mySystem.return_hostname()
 		self.myInfoDisplay.writerow(1,host)
 		self.myTimeout = timeout.Timeout(verbosity)
 		self.programmename = self.myMpc.progname()
 		remaining = self.myMpc.check_time_left()
-		# First display set here
 		self.myInfoDisplay.update_info_row()
 		self.show_station()
 		self.programmename = self.myMpc.progname()
 		self.myInfoDisplay.show_prog_info(self.programmename)
+		self.t = threading.Timer(20, self.audiofunc)
+		self.t.start()
+		
+	def audiofunc(self):
+		print 'Timeout'
+		self.logger.info('Audio timeout - new model')
+		self.myInfoDisplay.writerow(0,'Timeout              ')
+		self.myMpc.stop()
+		return(0)
+
+	def reset_timer(self):
+		self.t.cancel()
+		time.sleep(1)
+		self.t = threading.Timer(20, self.audiofunc)
+		self.t.start()
 	
 	def cleanup(self, string):
-		print string
+		print 'Cleaning up:', string
+		self.myInfoDisplay.t.cancel()	# stop updating the info row
 		self.myInfoDisplay.clear()
 		self.myInfoDisplay.writerow(0,string)
 		time.sleep(2)
 		self.myInfoDisplay.cleanup()	# needed to stop weather polling.
+		self.myKey.cleanup()
 		self.logger.error(string)
 		self.myMpc.cleanup()
 		self.myGpio.cleanup()
 		sys.exit(0)
+
+	def chk_key(self):
+		if self.myKey.command:
+			self.myKey.command = False
+			if self.myKey.exit:
+				self.die = True
+				self.myKey.exit = False
+			if self.myKey.next:
+				self.myKey.next = False
+				self.next = True
+			if self.myKey.stop:
+				self.myKey.stop = False
+				self.stop = True
+			if self.myKey.volup:
+				self.myKey.volup = False
+				self.volup = True
+			if self.myKey.voldown:
+				self.myKey.voldown = False
+				self.voldown = True
+			return(1)
+		else:
+			return(0)
 	
 	def master_loop(self):
 		'''Continuously cycle through all the possible events.'''
 		self.lasttime = time.time()		# has to be here to avoid long initial delay showing.
 		while True:
-			if self.myInfoDisplay.rowcount < 3:
-				self.myInfoDisplay.scroll(0,self.programmename)
-				time.sleep(.2)			# keep this inside try so that ctrl-c works here.		
+			self.chk_key()
 			try:
-				self.process_timeouts()
+				if self.die == True:
+					raise KeyboardInterrupt
+#				self.myInfoDisplay.scroll(0,self.programmename)
+				time.sleep(.2)			# keep this inside try so that ctrl-c works here.		
+#				self.process_timeouts()
 				reboot = self.process_button_presses()
 				if reboot == 1:
 					self.cleanup('Reboot')		# need to add to this!
 			except KeyboardInterrupt:
-				print 'Keyboard interrupt'
 				self.cleanup('Keyboard interrupt')
 			except:			# all other errors - should never get here
-				print 'General error'
 				self.cleanup('Master loop error')
 
 	def _show_time_taken(self):
@@ -121,24 +159,17 @@ class Executive:
 				return(0)
 			if timeout_type == VOLUMETIMEOUTFLAG:
 				self.programmename = self.temp_progname
-			if timeout_type == UPDATEOLEDFLAG:
+#			if timeout_type == UPDATEOLEDFLAG:
 	#			remaining = self.myTimeout.get_time_remaining()
-				remaining = self.myMpc.check_time_left()
-				self.myInfoDisplay.update_info_row(False)	# this has to be here to update time
-				self.programmename = self.myMpc.progname()
-				self.myMpc.recover_playing()
-				if self.mySystem.disk_usage():
-					self.myInfoDisplay.writerow(1, 'Out of disk.')
-					sys.exit()
-				else:
-					return(0)
-			if timeout_type == AUDIOTIMEOUTFLAG:
-				self.myMpc.audioTimeout()
-				self.programmename = '    Timeout     '
-			if timeout_type == DISPLAYTIMEOUTFLAG:
-				a=1
-				self.programmename = self.myMpc.progname()
-				self.myInfoDisplay.show_prog_info(self.programmename)
+#				remaining = self.myMpc.check_time_left()
+#				self.myInfoDisplay.update_info_row(False)	# this has to be here to update time
+#				self.programmename = self.myMpc.progname()
+#				self.myMpc.recover_playing()
+#				if self.mySystem.disk_usage():
+#					self.myInfoDisplay.writerow(1, 'Out of disk.')
+#					sys.exit()
+#				else:
+#					return(0)
 		except:
 			self.logger.error('Error in process_timeouts. Timeout type:'+str(timeout_type))
 			return(1)
@@ -162,9 +193,10 @@ class Executive:
 			if button == 0:
 				return(0)
 			else:
-				self.myTimeout.last_button_time()
+				self.reset_timer()				# reset audio timeout since button pressed
+#				self.myTimeout.last_button_time()
 				self.programmename = self.myMpc.progname()
-				self.myTimeout.resetAudioTimeout()
+#				self.myTimeout.resetAudioTimeout()
 				if button == BUTTONMODE:
 					self.myMpc.switchmode()
 				elif button == BUTTONNEXT:
@@ -210,21 +242,25 @@ class Executive:
 		'''Called by the main program. Expects callback processes to have
 			already set the Next and Stop states.'''
 		button=0
-		if self.myGpio.next == 1:
+		if self.myGpio.next or self.next:
 			self.logger.info("Button pressed next")
-			self.myGpio.next = 0
-			button = BUTTONNEXT
-		if self.myGpio.stop == 1:
+			self.myGpio.next = False
+			self.next = False
+			button = BUTTONNEXT			
+		if self.myGpio.stop or self.stop:
 			self.logger.info("Button pressed stop")
-			self.myGpio.stop = 0
+			self.myGpio.stop = False
+			self.stop = False
 			button = BUTTONSTOP
-		if self.myGpio.vol == 1:
+		if (self.myGpio.vol == 1) or self.volup:
 			self.logger.info("Button pressed vol up")
 			self.myGpio.vol=0
+			self.volup = False
 			button = BUTTONVOLUP
-		if self.myGpio.vol == -1:
+		if (self.myGpio.vol == -1) or self.voldown:
 			self.logger.info("Button pressed vol down")
 			self.myGpio.vol=0
+			self.voldown = False
 			button = BUTTONVOLDOWN
 #		self.logger.info("processbuttons: "+str(button))
 		return(button)

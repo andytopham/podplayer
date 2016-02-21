@@ -399,16 +399,7 @@ class Mpc:
 				progname = self.myBBC.stationname(self.station)	#oldway of doing it
 		return(progname)
 			
-	def audioTimeout(self):	
-		if self.playState == self.PLAYING:
-			self.logger.warning("Audio timeout")
-			if self.podmode:
-				self.pause()
-			else:
-				self.stop()
-			return(0)
-		else:
-			return(0)
+
 
 if __name__ == "__main__":
 	'''mpc.py. Called if this file is called standalone. Then just runs a selftest. '''

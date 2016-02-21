@@ -54,11 +54,11 @@ class Gpio:
 			print 'Gpio error: board type not defined.'
 			print 'Error: switch definitions not included.'
 			raise InitError(0)		
-		self.next = 0
-		self.stop = 0
+		self.next = False
+		self.stop = False
 		self.vol = 0
-		self.pod = 0
-		self.chgvol_flag = 0
+		self.pod = False
+		self.chgvol_flag = False
 		self.setup()
 		self.setupcallbacks()
 		self.maxelapsed = 0
@@ -87,13 +87,13 @@ class Gpio:
 	def pressednext(self,channel):
 		'''Minimally manage the callback that is triggered when the Next button is pressed.'''
 		self.logger.info("Button pressed next, Channel:"+str(channel))
-		self.next = 1
+		self.next = True
 		return(0)
 		
 	def pressedstop(self,channel):
 		'''Minimally manage the callback that is triggered when the Stop button is pressed.'''
 		self.logger.info("Button pressed stop, Channel:"+str(channel))
-		self.stop = 1
+		self.stop = True
 		return(0)
 
 	def pressedvolup(self,channel):

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 ''' Richer Oled information.'''
-import subprocess, time, logging, datetime, sys
+import subprocess, time, logging, datetime, sys, threading
 from weather import Weather
 import keys
 
@@ -68,6 +68,8 @@ class InfoDisplay():
 		self.logger.info('Update info row:'+clock)
 		self.myScreen.write_radio_extras(clock, self.myWeather.wunder_temperature)
 		self.myScreen.write_button_labels(False, False)
+		self.t = threading.Timer(60, self.update_info_row)	# run every 60secs
+		self.t.start()
 		return(0)
 	
 	def show_prog_info(self,string):
@@ -134,6 +136,8 @@ class InfoDisplay():
 		return(0)
 	
 	def scroll(self,row,string):
+		if self.rowcount > 2:	# do not scroll large display
+			return(0)
 		if self.scroll_pointer < 0:
 			self.myScreen.writerow(row,string[0:self.rowlength])
 		else:

@@ -1,12 +1,13 @@
 #!/usr/bin/python
 '''Podcast + internet radio player.'''
-import os
-import sys			# required for sys.exit()
+# import os
+# import sys			# required for sys.exit()
 import time, datetime, argparse, logging
 # from gpio import Gpio
 import executive
 
-LOGFILE = '/home/pi/master/podplayer/log/radio.log'
+# keep path explicit for run on boot
+LOGFILE = '/home/pi/master/podplayer/log/radio.log'	
 VERSION = '6.2'
 
 ''' 
