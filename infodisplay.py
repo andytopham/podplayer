@@ -15,6 +15,7 @@ NEXT_STATION_ROW = 8
 # button labels
 ###
 SCROLL_PAUSE = -5
+INFOROWUPDATEPERIOD = 60
 
 class InfoDisplay():
 	'''	Richer info on the oled. '''
@@ -68,8 +69,9 @@ class InfoDisplay():
 		self.logger.info('Update info row:'+clock)
 		self.myScreen.write_radio_extras(clock, self.myWeather.wunder_temperature)
 		self.myScreen.write_button_labels(False, False)
-		self.t = threading.Timer(60, self.update_info_row)	# run every 60secs
+		self.t = threading.Timer(INFOROWUPDATEPERIOD, self.update_info_row)	# run every 60secs
 		self.t.start()
+		self.t.name = 'inforow'
 		return(0)
 	
 	def show_prog_info(self,string):

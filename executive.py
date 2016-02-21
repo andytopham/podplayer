@@ -19,7 +19,7 @@ BUTTONREBOOT = 6
 BUTTONHALT = 7
 PRESSED = False		# decides which edge the button works on
 # UPDATEOLEDFLAG = 1
-# AUDIOTIMEOUTFLAG = 4
+AUDIOTIMEOUT = 60
 VOLUMETIMEOUTFLAG = 5
 DISPLAYTIMEOUTFLAG = 6
 SCROLL_ROW = 6
@@ -57,12 +57,13 @@ class Executive:
 		self.myTimeout = timeout.Timeout(verbosity)
 		self.programmename = self.myMpc.progname()
 		remaining = self.myMpc.check_time_left()
-		self.myInfoDisplay.update_info_row()
 		self.show_station()
 		self.programmename = self.myMpc.progname()
 		self.myInfoDisplay.show_prog_info(self.programmename)
-		self.t = threading.Timer(20, self.audiofunc)
+		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
 		self.t.start()
+		self.t.name = 'audiot'
+		print threading.enumerate()
 		
 	def audiofunc(self):
 		print 'Timeout'
@@ -74,12 +75,14 @@ class Executive:
 	def reset_timer(self):
 		self.t.cancel()
 		time.sleep(1)
-		self.t = threading.Timer(20, self.audiofunc)
+		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
 		self.t.start()
+		self.t.name = 'audiot'
 	
 	def cleanup(self, string):
 		print 'Cleaning up:', string
 		self.myInfoDisplay.t.cancel()	# stop updating the info row
+		self.t.cancel()					# stop the audio timer
 		self.myInfoDisplay.clear()
 		self.myInfoDisplay.writerow(0,string)
 		time.sleep(2)
@@ -88,6 +91,8 @@ class Executive:
 		self.logger.error(string)
 		self.myMpc.cleanup()
 		self.myGpio.cleanup()
+		time.sleep(2)
+		print threading.enumerate()
 		sys.exit(0)
 
 	def chk_key(self):
