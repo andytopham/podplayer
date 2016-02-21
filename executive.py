@@ -65,14 +65,13 @@ class Executive:
 	
 	def cleanup(self, string):
 		print string
+		self.myInfoDisplay.clear()
+		self.myInfoDisplay.writerow(0,string)
+		time.sleep(2)
 		self.myInfoDisplay.cleanup()	# needed to stop weather polling.
 		self.logger.error(string)
 		self.myMpc.cleanup()
 		self.myGpio.cleanup()
-		time.sleep(2)
-		self.myInfoDisplay.writerow(0,string)
-		time.sleep(2)
-		self.myInfoDisplay.end_display()
 		sys.exit(0)
 	
 	def master_loop(self):
@@ -88,8 +87,10 @@ class Executive:
 				if reboot == 1:
 					self.cleanup('Reboot')		# need to add to this!
 			except KeyboardInterrupt:
+				print 'Keyboard interrupt'
 				self.cleanup('Keyboard interrupt')
 			except:			# all other errors - should never get here
+				print 'General error'
 				self.cleanup('Master loop error')
 
 	def _show_time_taken(self):

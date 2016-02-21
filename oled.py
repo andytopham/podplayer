@@ -48,13 +48,16 @@ class Screen(threading.Thread):
 		self.initialise()
 
 	def run(self):
+		print 'Starting oled queue manager.'
+		myevent = False
 		while not myevent:
 			while not self.q.empty():
-				self.writerow(self.q.get())		# items on q must be row,string pairs
+				entry = self.q.get()
+				self.writerow(entry[0], entry[1])	
 				self.q.task_done()
-				myevent = self.Event.wait(1)	# wait for this timeout or the flag being set.
+			myevent = self.Event.wait(.5)	# wait for this timeout or the flag being set.
 		print 'Oled exiting'
-	
+
 	def initialise(self):
 #		self.port.open()
 		self.logger.info("Opened serial port")
@@ -71,24 +74,18 @@ class Screen(threading.Thread):
 		return(self.rowcount, self.rowlength)
 
 	def write_button_labels(self, next, stop):
-		# These are the button labels. No labels with small display.
+		# These are the botton labels. No labels with small display.
 		if next == True:
-			self.logger.info('write_button_labels. Next')
-			self.writerow(0,'Next            ')
+			self.q.put([0,'Next            '])
 		if stop == True:
-			self.logger.info('write_button_labels. Stop')
-			self.writerow(0,'Stop            ')		
-		return(0)
-	
-	def write_radio_extras(self, clock, temperature):
-		self.writerow(self.rowcount-1,'{0:5s}{1:7.1f}^C'.format(clock.ljust(self.rowlength-9),float(temperature)))		
-		return(0)
-	
-	def numberofrows(self):
-		''' Just returns the number of rows in the display for use by other routines.'''
-		return(self.rowcount)
+			self.q.put([0,'Stop            '])
+			return(0)
 		
-	def cleardisplay(self):
+	def write_radio_extras(self, clock, temperature):
+		self.q.put([self.rowcount-1,'{0:5s}{1:7.1f}^C'.format(clock.ljust(self.rowlength-9),float(temperature))])		
+		return(0)
+		
+	def clear(self):
 		self.port.write(chr(254))		# cmd
 		self.port.write(chr(1))			# clear display
 		time.sleep(.5)
@@ -165,12 +162,13 @@ if __name__ == "__main__":
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running oled class as a standalone app")
 	myOled = Screen()
-	dir(myOled)				# list functions for debug purposes
 	myOled.cleardisplay()
+	myOled.start()
 	myOled.writerow(0,"   OLED class       ")
 	myOled.writerow(1,"Config size="+str(myOled.rowlength)+"x"+str(myOled.rowcount))
 	if myOled.rowcount > 2:
 		myOled.writerow(2,"01234567890123456789")
 		myOled.writerow(3,"Running oled.py     ")
-#	myOled.screensave()
+	print 'Ending oled main prog.'
+	
 		

@@ -1,10 +1,12 @@
 ''' uoled.py
 	Completely replaces oled.py.
 	Called by infodisplay.py
+	Now threaded.
+	The text to be written is placed in a queue, 
+	and then the run method works through this.
 '''
 import gaugette.ssd1306
-import time
-import sys
+import time, sys, logging, datetime
 from time import gmtime, strftime
 import threading, Queue
 
@@ -19,12 +21,15 @@ DC_PIN    = 16
 ROWLENGTH = 20
 LAST_PROG_ROW = 2
 
+LOGFILE = 'log/uoled.log'
+
 class Screen(threading.Thread):
 	def __init__(self, rowcount = 4):
 		self.Event = threading.Event()
 		self.threadLock = threading.Lock()
 		threading.Thread.__init__(self, name='myuoled')
 		self.q = Queue.Queue(maxsize=6)
+		self.logger = logging.getLogger(__name__)
 		self.rowcount = rowcount
 		self.rowlength = ROWLENGTH
 		self.last_prog_row = LAST_PROG_ROW
@@ -39,11 +44,14 @@ class Screen(threading.Thread):
 		time.sleep(1)
 	
 	def run(self):
+		print 'Starting uoled queue manager.'
+		myevent = False
 		while not myevent:
 			while not self.q.empty():
-				self.writerow(self.q.get())		# items on q must be row,string pairs
+				entry = self.q.get()
+				self.writerow(entry[0], entry[1])	
 				self.q.task_done()
-				myevent = self.Event.wait(1)	# wait for this timeout or the flag being set.
+			myevent = self.Event.wait(.5)	# wait for this timeout or the flag being set.
 		print 'Uoled exiting'
 	
 	def clear(self):
@@ -58,15 +66,13 @@ class Screen(threading.Thread):
 	def write_button_labels(self, next, stop):
 		# These are the botton labels. No labels with small display.
 		if next == True:
-			self.logger.info('write_button_labels. Next')
-			self.writerow(0,'Next            ')
+			self.q.put([0,'Next            '])
 		if stop == True:
-			self.logger.info('write_button_labels. Stop')
-			self.writerow(0,'Stop            ')		
-		return(0)
+			self.q.put([0,'Stop            '])
+			return(0)
 		
 	def write_radio_extras(self, clock, temperature):
-		self.writerow(self.rowcount-1,'{0:5s}{1:7.1f}^C'.format(clock.ljust(self.rowlength-9),float(temperature)))		
+		self.q.put([self.rowcount-1,'{0:5s}{1:7.1f}^C'.format(clock.ljust(self.rowlength-9),float(temperature))])		
 		return(0)
 		
 	def writerow(self, row, string):
@@ -87,3 +93,22 @@ class Screen(threading.Thread):
 			self.led.display()
 		return(0)
 		
+if __name__ == "__main__":
+	print "Running uoled class as a standalone app"
+	logging.basicConfig(filename=LOGFILE, filemode='w', level=logging.INFO)
+#	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
+	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running uoled class as a standalone app")
+	
+	print 'Testing uoled functionality.'
+	myScreen = Screen()
+	myScreen.q.put([1, 'Uoled test'])
+	myScreen.start()
+	myScreen.write_button_labels(True, True)
+	time.sleep(2)
+	clock = time.strftime("%R")
+	myScreen.write_radio_extras(clock, '9.9')
+	myScreen.q.put([2,'Next msg'])
+	time.sleep(5)
+	print 'Ending process'
+	myScreen.Event.set()
+	print 'Exit main prog'

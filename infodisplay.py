@@ -31,6 +31,7 @@ class InfoDisplay():
 		elif keys.board == 'uoled':
 			import uoled
 			self.myScreen = uoled.Screen()
+			self.myScreen.start()
 		elif keys.board == 'tft':
 			import tft
 			self.myScreen = tft.Screen()
@@ -39,7 +40,7 @@ class InfoDisplay():
 			self.logger.error('No display specified in keys file. Exiting.')
 			sys.exit()
 		self.rowcount, self.rowlength = self.myScreen.info()
-		self.myScreen.writerow(TITLE_ROW, 'Starting up...'.center(self.rowlength))
+		self.writerow(TITLE_ROW, 'Starting up...'.center(self.rowlength))
 		self.myWeather = Weather(keys.key, keys.locn)
 		self.myWeather.start()
 		self.update_info_row()
@@ -49,13 +50,16 @@ class InfoDisplay():
 
 	def cleanup(self):
 		self.myWeather.Event.set()			# send the stop signal
+		self.myScreen.Event.set()
+		
+	def clear(self):
 		self.myScreen.clear()
 	
 	def writerow(self, row, string):
 		if row < self.rowcount:
-			self.myScreen.q.put((row, string))	# add to the queue
+			self.myScreen.q.put([row, string])	# add to the queue
 
-	def end_display(self):
+	def _end_display(self):
 		self.myScreen.Event.set()			# send the stop signal
 	
 	def update_info_row(self):
@@ -71,9 +75,9 @@ class InfoDisplay():
 		self.logger.info('proginfo:'+string)
 		retstr, string = self._find_station_name(string)
 		if retstr:						# if the station is recognised.
-			self.myScreen.writerow(TITLE_ROW,retstr.center(self.rowlength))
+			self.myScreen.q.put([TITLE_ROW,retstr.center(self.rowlength)])
 		else:
-			self.myScreen.writerow(TITLE_ROW,string[:self.rowlength].ljust(self.rowlength))
+			self.myScreen.q.put([TITLE_ROW,string[:self.rowlength].ljust(self.rowlength)])
 			string = string[self.rowlength:]	
 		for i in range(TITLE_ROW+1, self.myScreen.last_prog_row+1):
 			string = self._process_next_row(i,string)
@@ -153,12 +157,10 @@ if __name__ == "__main__":
 
 	print 'Infodisplay test'		
 	myID = InfoDisplay()
-#	print dir(myID)
 	myID.show_prog_info('This is a very long text string to test where the programme information would normally be printed.')
-#	myID.scroll(6,'This is a very long text string to test where the programme information would normally be printed.')
-	print 'Weather thread has been forked.'
-	
+#	print 'Weather thread has been forked.'
+	time.sleep(8)
 	myID.cleanup()
-	print 'Weather has been told to stop.'
+#	print 'Weather has been told to stop.'
 	print 'Main prog is finished.'
 	
