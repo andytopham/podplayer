@@ -25,6 +25,8 @@ class InfoDisplay():
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
 		self.logger.info("Starting InfoDisplay class")
+		self.myWeather = Weather(keys.key, keys.locn)
+		self.myWeather.start()
 		print 'board = ',keys.board
 		if keys.board == 'oled4':
 			import oled
@@ -43,18 +45,20 @@ class InfoDisplay():
 			print 'No display specified in keys file. Exiting.'
 			self.logger.error('No display specified in keys file. Exiting.')
 			sys.exit()
+		self.myScreen.start()
 		self.rowcount, self.rowlength = self.myScreen.info()
 		self.writerow(TITLE_ROW, 'Starting up...'.center(self.rowlength))
-		self.myWeather = Weather(keys.key, keys.locn)
-		self.myWeather.start()
 		self.update_info_row()
 		self.lasttime = 0
 		self.delta = 0.001
 		self.scroll_pointer = SCROLL_PAUSE
 
 	def cleanup(self):
+		self.t.cancel()						# cancel timer for update row
 		self.myWeather.Event.set()			# send the stop signal
 		self.myScreen.Event.set()
+		time.sleep(2)
+		print threading.enumerate()			# useful for debug orphaned threads
 		
 	def clear(self):
 		self.myScreen.clear()
@@ -170,7 +174,8 @@ if __name__ == "__main__":
 	myID = InfoDisplay()
 	myID.show_prog_info('This is a very long text string to test where the programme information would normally be printed.')
 #	print 'Weather thread has been forked.'
-	time.sleep(8)
+	time.sleep(5)
+	print 'cleaning up'
 	myID.cleanup()
 #	print 'Weather has been told to stop.'
 	print 'Main prog is finished.'

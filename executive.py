@@ -18,7 +18,7 @@ BUTTONMODE = 5
 BUTTONREBOOT = 6
 BUTTONHALT = 7
 PRESSED = False		# decides which edge the button works on
-AUDIOTIMEOUT = 60
+AUDIOTIMEOUT = 60*45
 
 class Executive:
 	'''The main podplayer looping structure. '''
@@ -87,7 +87,7 @@ class Executive:
 		self.logger.error(string)
 		self.myMpc.cleanup()
 		self.myGpio.cleanup()
-		time.sleep(2)
+		time.sleep(3)
 		print threading.enumerate()
 		sys.exit(0)
 
@@ -144,7 +144,7 @@ class Executive:
 		self.myInfoDisplay.show_next_station(prog)
 		return(0)
 
-	def _show_station(self):
+	def show_station(self):
 		prog = self.myMpc.this_station()
 		self.myInfoDisplay.show_prog_info(prog)
 		return(0)

@@ -1,9 +1,11 @@
 #!/usr/bin/python
 '''Podcast + internet radio player.'''
-# import os
-# import sys			# required for sys.exit()
+# Todo:-
+# When play stopped, display returns to prog name.
+# Restarting play after stop only briefly works.
+
+
 import time, datetime, argparse, logging
-# from gpio import Gpio
 import executive
 
 # keep path explicit for run on boot
