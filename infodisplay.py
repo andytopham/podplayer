@@ -4,6 +4,9 @@ import subprocess, time, logging, datetime, sys, threading
 from weather import Weather
 import keys
 
+# ToDo: Add scrolling, based on overflow from row0.
+#   Put this into a Timer.
+
 
 ### Display layout for tft
 # ROWS 0 to 3 = Prog info
@@ -64,7 +67,8 @@ class InfoDisplay():
 		self.myScreen.Event.set()			# send the stop signal
 	
 	def update_info_row(self):
-		'''Time and temperature display on the info line = bottom row'''
+		'''Time and temperature display on the info line = bottom row.
+			This now repeats itself courtesy of the Timer.'''
 		clock = time.strftime("%R")
 		self.logger.info('Update info row:'+clock)
 		self.myScreen.write_radio_extras(clock, self.myWeather.wunder_temperature)
@@ -86,17 +90,17 @@ class InfoDisplay():
 		for i in range(TITLE_ROW+1, self.myScreen.last_prog_row+1):
 			string = self._process_next_row(i,string)
 		return(0)
-		
+## Need to scroll the last row ###		
 	def _process_next_row(self, row, string):
 		if len(string) > 0:
 			if string[0] == ' ':				# strip off any leading space.
 				string = string[1:]
-			self.myScreen.writerow(row,string[:self.rowlength].ljust(self.rowlength))
+			self.myScreen.q.put([row,string[:self.rowlength].ljust(self.rowlength)])
 			string = string[self.rowlength:]
 		else:
 			if row < 4:
 				string = ''
-				self.myScreen.writerow(row,string)
+				self.myScreen.q.put([row,string])
 		return(string)
 	
 	def _find_station_name(self,string):
@@ -116,8 +120,8 @@ class InfoDisplay():
 		else:
 			return(False, string)
 	
-	def displayvol(self, string):
-		self.myScreen.writerow(self.rowcount-1, string)	
+#	def displayvol(self, string):
+#		self.myScreen.writerow(self.rowcount-1, string)	
 
 	def show_timings(self, elapsed=0, maxelapsed=0):
 		'''Show time gone.'''
@@ -126,17 +130,18 @@ class InfoDisplay():
 			self.lasttime = elapsed
 		return(0)
 
-	def show_next_station(self,prog='Test'):
-		'''Show test code.'''
-		self.myScreen.writerow(NEXT_STATION_ROW, prog[:self.rowlength])
-		return(0)
+#	def show_next_station(self,prog='Test'):
+#		'''Show test code.'''
+#		self.myScreen.writerow(NEXT_STATION_ROW, prog[:self.rowlength])
+#		return(0)
 		
 	def _update_whole_display(self):
 		self.update_row2()
 		self.update_row3()
 		self.update_row4()
 		return(0)
-	
+
+# This needs putting into a timer.....####		
 	def scroll(self,row,string):
 		if self.rowcount > 2:	# do not scroll large display
 			return(0)

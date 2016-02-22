@@ -3,11 +3,11 @@
 # The main podplayer looping structure.
 
 import time, datetime, logging, subprocess, sys
-import timeout, infodisplay, keyboardpoller
+import infodisplay, keyboardpoller, gpio
 from mpc2 import Mpc
 from system import System
-import gpio
 import threading
+# import timeout
 
 BUTTONNONE = 0
 BUTTONNEXT = 1
@@ -18,11 +18,7 @@ BUTTONMODE = 5
 BUTTONREBOOT = 6
 BUTTONHALT = 7
 PRESSED = False		# decides which edge the button works on
-# UPDATEOLEDFLAG = 1
 AUDIOTIMEOUT = 60
-VOLUMETIMEOUTFLAG = 5
-DISPLAYTIMEOUTFLAG = 6
-SCROLL_ROW = 6
 
 class Executive:
 	'''The main podplayer looping structure. '''
@@ -54,7 +50,7 @@ class Executive:
 		self.mySystem = System()
 		host = self.mySystem.return_hostname()
 		self.myInfoDisplay.writerow(1,host)
-		self.myTimeout = timeout.Timeout(verbosity)
+#		self.myTimeout = timeout.Timeout(verbosity)
 		self.programmename = self.myMpc.progname()
 		remaining = self.myMpc.check_time_left()
 		self.show_station()
@@ -63,7 +59,7 @@ class Executive:
 		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
 		self.t.start()
 		self.t.name = 'audiot'
-		print threading.enumerate()
+		print threading.enumerate()		# helps debug
 		
 	def audiofunc(self):
 		print 'Timeout'
@@ -125,9 +121,7 @@ class Executive:
 			try:
 				if self.die == True:
 					raise KeyboardInterrupt
-#				self.myInfoDisplay.scroll(0,self.programmename)
 				time.sleep(.2)			# keep this inside try so that ctrl-c works here.		
-#				self.process_timeouts()
 				reboot = self.process_button_presses()
 				if reboot == 1:
 					self.cleanup('Reboot')		# need to add to this!
@@ -150,51 +144,15 @@ class Executive:
 		self.myInfoDisplay.show_next_station(prog)
 		return(0)
 
-	def show_station(self):
+	def _show_station(self):
 		prog = self.myMpc.this_station()
 		self.myInfoDisplay.show_prog_info(prog)
-		return(0)
-	
-	def process_timeouts(self):
-		'''Cases for each of the timeout types.'''
-		try:
-			self.chk_volume_timeout()
-			timeout_type = self.myTimeout.checktimeouts()
-			if timeout_type == 0:
-				return(0)
-			if timeout_type == VOLUMETIMEOUTFLAG:
-				self.programmename = self.temp_progname
-#			if timeout_type == UPDATEOLEDFLAG:
-	#			remaining = self.myTimeout.get_time_remaining()
-#				remaining = self.myMpc.check_time_left()
-#				self.myInfoDisplay.update_info_row(False)	# this has to be here to update time
-#				self.programmename = self.myMpc.progname()
-#				self.myMpc.recover_playing()
-#				if self.mySystem.disk_usage():
-#					self.myInfoDisplay.writerow(1, 'Out of disk.')
-#					sys.exit()
-#				else:
-#					return(0)
-		except:
-			self.logger.error('Error in process_timeouts. Timeout type:'+str(timeout_type))
-			return(1)
-		return(0)
-
-	def chk_volume_timeout(self):
-		'''Poll to see if the volume bar timeout has happened.'''
-		if self.chgvol_flag == 1:
-			try:
-				if self.myTimeout.check_volume_timeout():
-					self.chgvol_flag = 0
-					self.programmename = self.temp_progname
-			except:
-				self.logger.info('Error in volume timeout handling')
 		return(0)
 		
 	def process_button_presses(self):
 		'''Poll for each of the button presses and return the new prog name.'''
 		try:
-			button = self.processbuttons()
+			button = self._processbuttons()
 			if button == 0:
 				return(0)
 			else:
@@ -243,9 +201,10 @@ class Executive:
 			return(-1)
 		return(0)
 		
-	def processbuttons(self):
-		'''Called by the main program. Expects callback processes to have
-			already set the Next and Stop states.'''
+	def _processbuttons(self):
+		'''Called by the process_button_presses. Expects callback processes to have
+			already set the Next and Stop states.
+			This routine is relatively quick. Slower parts are in the parent.'''
 		button=0
 		if self.myGpio.next or self.next:
 			self.logger.info("Button pressed next")
@@ -270,7 +229,7 @@ class Executive:
 #		self.logger.info("processbuttons: "+str(button))
 		return(button)
 			
-	def show_vol_bar(self, volume):
+	def _show_vol_bar(self, volume):
 		'''Draw the volume bar on the display.'''
 		self.logger.info('vol bar '+str(volume))
 		self.chgvol_flag = 1
@@ -298,4 +257,7 @@ if __name__ == "__main__":
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running executive class as a standalone app")
 	myExecutive = Executive()
+	myExecutive.startup()
 	myExecutive.self_test()
+	# put some buttons here.....
+	myExecutive.master_loop()
