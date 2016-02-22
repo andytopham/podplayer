@@ -1,5 +1,8 @@
 #!/usr/bin/python
 '''Module to control mpd using the native python library python-mpd2.'''
+# Todo:
+# Put fetching prog name into a  timer or thread.
+
 import time, datetime, logging, subprocess, requests, os
 from bs4 import BeautifulSoup
 from bbcradio import BBCradio
@@ -16,7 +19,7 @@ class Mpc:
 	STOPPED = 0
 	PLAYING = 1
 	VOLSTEP = 5
-	STOPPEDPROGNAME = "                   ."
+	STOPPEDPROGNAME = "  Stopped              "
 	
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
@@ -35,6 +38,7 @@ class Mpc:
 		self.logger.info("python-mpd2 version:"+self.client.mpd_version)
 		self.myBBC = BBCradio(self.client)
 		self.myBBC.start()
+		self.myBBC.stationname()
 		self.updatedb()						# just run this occasionally
 		self.setvol(40)
 		self.station = 0
@@ -57,6 +61,7 @@ class Mpc:
 	def cleanup(self):
 		self.stop()
 		self.myBBC.Event.set()			# send the stop signal
+		self.myBBC.t.cancel()			# stop collecting prog names
 		
 	def next_station(self):
 		no_of_stations = self.myBBC.stationcounter()
@@ -68,6 +73,7 @@ class Mpc:
 		return(line[0])
 		
 	def this_station(self):
+		'''The short identifier from my url list, not the full prog info.'''
 		return(self.myBBC.newurls[self.station][0])
 		
 	def check_time_left(self):
@@ -354,8 +360,14 @@ class Mpc:
 			self.client.play(self.station)
 #			self.play()
 			return(self.station)
-		
+
 	def progname(self):
+		if self.playState == self.STOPPED:
+			return(self.STOPPEDPROGNAME)
+		else:
+			return(self.myBBC.bbcname[self.station])
+	
+	def oldprogname(self):
 		"""Fetch the name of the currently playing programme or podcast."""
 		if self.playState == self.STOPPED:
 			self.logger.info("Fetching mpd program name for stopped program")
@@ -399,20 +411,32 @@ class Mpc:
 				progname = self.myBBC.stationname(self.station)	#oldway of doing it
 		return(progname)
 			
-
-
 if __name__ == "__main__":
 	'''mpc.py. Called if this file is called standalone. Then just runs a selftest. '''
 #	print "Running mpc class as a standalone app"
-	logging.basicConfig(filename='log/mpc.log',
-						filemode='w',
-						level=logging.INFO)	#filemode means that we do not append anymore
+	logging.basicConfig(filename='log/mpc.log', filemode='w', level=logging.INFO)	#filemode means that we do not append anymore
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running mpc class as a standalone app")
 
-	print __doc__
-	print dir(Mpc)
+	print 'My mpc test prog'
 	myMpc = Mpc()
 	myMpc.play()
-	myMpc.progname()
+	time.sleep(2)
+	print 'Getting prog name'
+	print myMpc.progname()
+	time.sleep(2)
+	print 'Stopping'
+	myMpc.toggle()
+	time.sleep(2)
+	print 'Starting'
+	myMpc.toggle()	
+	time.sleep(2)
+	print 'Next station'
+	myMpc.next()
+	print myMpc.progname()	
+	time.sleep(90)
+	print 'Exiting main prog.'
+	myMpc.cleanup()
+	
+	
 

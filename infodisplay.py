@@ -37,7 +37,7 @@ class InfoDisplay():
 		elif keys.board == 'uoled':
 			import uoled
 			self.myScreen = uoled.Screen()
-			self.myScreen.start()
+#			self.myScreen.start()
 		elif keys.board == 'tft':
 			import tft
 			self.myScreen = tft.Screen()
@@ -61,15 +61,13 @@ class InfoDisplay():
 		print threading.enumerate()			# useful for debug orphaned threads
 		
 	def clear(self):
+		'''Clear screen.'''
 		self.myScreen.clear()
 	
 	def writerow(self, row, string):
 		if row < self.rowcount:
 			self.myScreen.q.put([row, string])	# add to the queue
 
-	def _end_display(self):
-		self.myScreen.Event.set()			# send the stop signal
-	
 	def update_info_row(self):
 		'''Time and temperature display on the info line = bottom row.
 			This now repeats itself courtesy of the Timer.'''
@@ -108,7 +106,7 @@ class InfoDisplay():
 		return(string)
 	
 	def _find_station_name(self,string):
-		''' Just recognise the BBC station.'''
+		'''Decode the BBC station from the proginfo.'''
 		a = string.split()
 		if a[0] == 'BBC':
 			if a[3] == '6':
@@ -124,27 +122,13 @@ class InfoDisplay():
 		else:
 			return(False, string)
 	
-#	def displayvol(self, string):
-#		self.myScreen.writerow(self.rowcount-1, string)	
-
 	def show_timings(self, elapsed=0, maxelapsed=0):
 		'''Show time gone.'''
 		if ((elapsed - self.lasttime) > self.delta) or ((self.lasttime - elapsed) > self.delta): 
 			self.myScreen.writerow(TIMING_ROW,'Now={0:4.2f}s Max={1:5.2f}s'.format(elapsed, maxelapsed))
 			self.lasttime = elapsed
 		return(0)
-
-#	def show_next_station(self,prog='Test'):
-#		'''Show test code.'''
-#		self.myScreen.writerow(NEXT_STATION_ROW, prog[:self.rowlength])
-#		return(0)
 		
-	def _update_whole_display(self):
-		self.update_row2()
-		self.update_row3()
-		self.update_row4()
-		return(0)
-
 # This needs putting into a timer.....####		
 	def scroll(self,row,string):
 		if self.rowcount > 2:	# do not scroll large display
@@ -159,6 +143,7 @@ class InfoDisplay():
 		return(0)
 
 	def writelabels(self, next = False, stop = False):
+		'''Show the action labels on the screen.'''
 		self.logger.info('writelabels')
 		self.myScreen.write_button_labels(next, stop)
 		return(0)

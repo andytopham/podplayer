@@ -50,10 +50,9 @@ class Executive:
 		self.mySystem = System()
 		host = self.mySystem.return_hostname()
 		self.myInfoDisplay.writerow(1,host)
-#		self.myTimeout = timeout.Timeout(verbosity)
 		self.programmename = self.myMpc.progname()
 		remaining = self.myMpc.check_time_left()
-		self.show_station()
+#		self.show_station()
 		self.programmename = self.myMpc.progname()
 		self.myInfoDisplay.show_prog_info(self.programmename)
 		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
@@ -62,13 +61,15 @@ class Executive:
 		print threading.enumerate()		# helps debug
 		
 	def audiofunc(self):
+		'''Called by the audio timeout Timer. Implements the actual timeout function.'''
 		print 'Timeout'
 		self.logger.info('Audio timeout - new model')
 		self.myInfoDisplay.writerow(0,'Timeout              ')
 		self.myMpc.stop()
 		return(0)
 
-	def reset_timer(self):
+	def reset_audio_timer(self):
+		'''Resets the audio timeout Timer. Called by each button push.'''
 		self.t.cancel()
 		time.sleep(1)
 		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
@@ -92,6 +93,7 @@ class Executive:
 		sys.exit(0)
 
 	def chk_key(self):
+		'''Act on keyboard presses.'''
 		if self.myKey.command:
 			self.myKey.command = False
 			if self.myKey.exit:
@@ -143,11 +145,6 @@ class Executive:
 		prog = self.myMpc.next_station()
 		self.myInfoDisplay.show_next_station(prog)
 		return(0)
-
-	def show_station(self):
-		prog = self.myMpc.this_station()
-		self.myInfoDisplay.show_prog_info(prog)
-		return(0)
 		
 	def process_button_presses(self):
 		'''Poll for each of the button presses and return the new prog name.'''
@@ -156,26 +153,26 @@ class Executive:
 			if button == 0:
 				return(0)
 			else:
-				self.reset_timer()				# reset audio timeout since button pressed
-#				self.myTimeout.last_button_time()
-				self.programmename = self.myMpc.progname()
-#				self.myTimeout.resetAudioTimeout()
+				self.reset_audio_timer()				# reset audio timeout since button pressed
+#				self.programmename = self.myMpc.progname()
 				if button == BUTTONMODE:
 					self.myMpc.switchmode()
 				elif button == BUTTONNEXT:
 					self.myInfoDisplay.writelabels(True)
 					if self.myMpc.next() == -1:
 						return('No pods left!')
-					self.show_station()
+					prog = self.myMpc.this_station()
+					self.myInfoDisplay.show_prog_info(prog)
+					# the next two lines could be done in the background.
 					self.programmename = self.myMpc.progname()
 					self.myInfoDisplay.show_prog_info(self.programmename)
-					self.myInfoDisplay.writelabels()		# reset
+#					self.myInfoDisplay.writelabels()		# reset
 				elif button == BUTTONSTOP:
 					self.myInfoDisplay.writelabels(False, True)
 					self.myMpc.toggle()
 					self.programmename = self.myMpc.progname()
 					self.myInfoDisplay.show_prog_info(self.programmename)
-					self.myInfoDisplay.writelabels()		# reset
+#					self.myInfoDisplay.writelabels()		# reset
 				elif button == BUTTONREBOOT:
 					print 'Rebooting...'
 					self.myMpc.stop()
@@ -202,7 +199,7 @@ class Executive:
 		return(0)
 		
 	def _processbuttons(self):
-		'''Called by the process_button_presses. Expects callback processes to have
+		'''Called by process_button_presses. Expects callback processes to have
 			already set the Next and Stop states.
 			This routine is relatively quick. Slower parts are in the parent.'''
 		button=0

@@ -65,7 +65,7 @@ if __name__ == "__main__":
 		verbose = 1
 		logging.basicConfig(	filename=LOGFILE,
 								filemode='w',
-								level=logging.DEBUG )
+								level=logging.INFO )
 	else:
 		verbose = 0
 		logging.basicConfig(	filename=LOGFILE,

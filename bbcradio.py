@@ -5,11 +5,14 @@ from bs4 import BeautifulSoup
 import mpd
 import threading
 
+STATIONNAMERESETTIME = 60
+
 class BBCradio(threading.Thread):
 	# These are the indicies to the url array.
 	URLID = 0
 	URLSTREAM = 1
 	URLDETAILS = 2
+	NAME = 3
 	urls = [["BBCR2",	"r2_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_two" ],
 			["BBCR4",	"r4_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four" ],
 			["BBCR4x",	"r4x_aaclca.pls",	"http://www.bbc.co.uk/radio/player/bbc_radio_four_extra"],
@@ -29,7 +32,10 @@ class BBCradio(threading.Thread):
 		self.logger = logging.getLogger(__name__)
 		self.expiry_times = [None]*6
 		self.stationcount = 0
-		__all__ = ['stationcounter', 'load', 'stationname']		# list the functions available here
+		self.bbcname = ['Not yet available']*5
+#		self.t = threading.Timer(STATIONNAMERESETTIME, self.stationname)
+#		self.t.start()
+#		self.t.name = 'bbcstnname'
 
 	def run(self):
 		print 'Starting bbc collection.'
@@ -37,7 +43,8 @@ class BBCradio(threading.Thread):
 		while not myevent:
 			if self.load(self.mpd_channel) != 0:
 				print 'BBC load error.'
-				raise RunError(0)
+				self.logger.error('BBC load error')
+				myevent = True
 			time.sleep(2)			# temporary
 			myevent = self.Event.wait(60*60)		# wait for this timeout or the flag being set.
 		print 'BBC exiting.'
@@ -207,23 +214,31 @@ class BBCradio(threading.Thread):
 				#print line[6:]
 				print line[90:]
 
-	def stationname(self, station):
-		"""Fetch the name of the currently playing BBC programme."""
-		self.logger.info("stationname: Fetching BBC radio program name")
-		row = self.urls[station]
-		address = row[self.URLDETAILS]
-		try:
-			soup = BeautifulSoup(requests.get(address).text,"html.parser")
-		except requests.ConnectionError:
-			self.logger.error("Connection error getting prog info")
-			return("Connection error ")
-		else:
+	def stationname(self):
+		"""Fetch the names of all the BBC programmes."""
+		self.logger.info("Stationname: Fetching BBC radio program names.")
+#		print 'Fetching BBC names'
+		for station in range(4):
+			row = self.urls[station]
+			address = row[self.URLDETAILS]
 			try:
-				programmename = unicode(soup.title.string)
-			except:
-				programmename = "Unpronounceable"
+				soup = BeautifulSoup(requests.get(address).text,"html.parser")
+			except requests.ConnectionError:
+				self.logger.error("Connection error getting prog info")
+				self.bbcname[station] = "Connection error "
+			else:
+				try:
+					programmename = unicode(soup.title.string)
+				except:
+					programmename = "Unpronounceable"
 			self.logger.info("Program name:"+programmename)
-			return(programmename)
+#			print programmename
+			self.bbcname[station] = programmename
+		# restart the timer
+		self.t = threading.Timer(STATIONNAMERESETTIME, self.stationname)
+		self.t.start()
+		self.t.name = 'bbcstnname'
+
 				
 if __name__ == "__main__":
 	print "Running bbcradio class as a standalone app"
