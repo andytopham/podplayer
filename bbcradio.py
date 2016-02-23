@@ -49,6 +49,12 @@ class BBCradio(threading.Thread):
 			myevent = self.Event.wait(60*60)		# wait for this timeout or the flag being set.
 		print 'BBC exiting.'
 
+	def cleanup(self):
+		self.t.cancel()
+		time.sleep(1)
+		self.Event.set()			# send the stop signal
+		time.sleep(1)
+
 	def stationcounter(self):
 		'''Return the number of radio station urls.'''
 		self.logger.info("Counting stations. Count="+str(len(self.urls)))

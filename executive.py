@@ -31,11 +31,11 @@ class Executive:
 		self.stop = False
 		self.volup = False
 		self.voldown = False
-		self.vol = 0
-		self.pod = 0
+#		self.vol = 0
+#		self.pod = 0
 		self.chgvol_flag = 0
 		self.maxelapsed = 0
-		self.button_pressed_time = datetime.datetime.now()
+#		self.button_pressed_time = datetime.datetime.now()
 
 	def startup(self, verbosity):
 		'''Initialisation for the objects that have variable startup behaviour'''
@@ -52,9 +52,8 @@ class Executive:
 		self.myInfoDisplay.writerow(1,host)
 		self.programmename = self.myMpc.progname()
 		remaining = self.myMpc.check_time_left()
-#		self.show_station()
-		self.programmename = self.myMpc.progname()
-		self.myInfoDisplay.show_prog_info(self.programmename)
+		self.myInfoDisplay.prog = self.myMpc.progname()
+		self.myInfoDisplay.update_display()
 		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
 		self.t.start()
 		self.t.name = 'audiot'
@@ -63,7 +62,7 @@ class Executive:
 	def audiofunc(self):
 		'''Called by the audio timeout Timer. Implements the actual timeout function.'''
 		print 'Timeout'
-		self.logger.info('Audio timeout - new model')
+		self.logger.info('Audio timeout')
 		self.myInfoDisplay.writerow(0,'Timeout              ')
 		self.myMpc.stop()
 		return(0)
@@ -89,7 +88,8 @@ class Executive:
 		self.myMpc.cleanup()
 		self.myGpio.cleanup()
 		time.sleep(3)
-		print threading.enumerate()
+		print threading.enumerate()		# should just show the main thread
+		self.logger.warning('Finished exec cleanup')
 		sys.exit(0)
 
 	def chk_key(self):
@@ -111,15 +111,15 @@ class Executive:
 			if self.myKey.voldown:
 				self.myKey.voldown = False
 				self.voldown = True
-			return(1)
+			return(True)
 		else:
-			return(0)
+			return(False)
 	
 	def master_loop(self):
 		'''Continuously cycle through all the possible events.'''
 		self.lasttime = time.time()		# has to be here to avoid long initial delay showing.
 		while True:
-			self.chk_key()
+			self.chk_key()				# poll to see if there has been a key pressed
 			try:
 				if self.die == True:
 					raise KeyboardInterrupt
@@ -148,54 +148,50 @@ class Executive:
 		
 	def process_button_presses(self):
 		'''Poll for each of the button presses and return the new prog name.'''
-		try:
-			button = self._processbuttons()
-			if button == 0:
-				return(0)
-			else:
-				self.reset_audio_timer()				# reset audio timeout since button pressed
-#				self.programmename = self.myMpc.progname()
-				if button == BUTTONMODE:
-					self.myMpc.switchmode()
-				elif button == BUTTONNEXT:
-					self.myInfoDisplay.writelabels(True)
-					if self.myMpc.next() == -1:
-						return('No pods left!')
-					prog = self.myMpc.this_station()
-					self.myInfoDisplay.show_prog_info(prog)
-					# the next two lines could be done in the background.
-					self.programmename = self.myMpc.progname()
-					self.myInfoDisplay.show_prog_info(self.programmename)
-#					self.myInfoDisplay.writelabels()		# reset
-				elif button == BUTTONSTOP:
-					self.myInfoDisplay.writelabels(False, True)
-					self.myMpc.toggle()
-					self.programmename = self.myMpc.progname()
-					self.myInfoDisplay.show_prog_info(self.programmename)
-#					self.myInfoDisplay.writelabels()		# reset
-				elif button == BUTTONREBOOT:
-					print 'Rebooting...'
-					self.myMpc.stop()
-					self.myInfoDisplay.writerow(1, 'Rebooting...     ')
-					time.sleep(2)
-					p = subprocess.call(['reboot'])
-					return(1)
-				elif button == BUTTONHALT:
-					print 'Halting...'
-					self.myMpc.stop()
-					self.myInfoDisplay.writerow(1, 'Halting...      ')
-					time.sleep(2)
-					p = subprocess.call(['halt'])
-					return(1)
-				elif button == BUTTONVOLUP:
-					v = self.myMpc.chgvol(+1)
-					self.show_vol_bar(v)
-				elif button == BUTTONVOLDOWN:
-					v = self.myMpc.chgvol(-1)
-					self.show_vol_bar(v)
-		except:
-			self.logger.warning('Error in process_button_presses: Value='+str(button))
-			return(-1)
+#		try:
+		button = self._processbuttons()
+		if button == 0:
+			return(0)
+		else:
+			self.reset_audio_timer()				# reset audio timeout since button pressed
+			if button == BUTTONMODE:
+				self.myMpc.switchmode()
+			elif button == BUTTONNEXT:
+				self.myInfoDisplay.writelabels(True)
+				if self.myMpc.next() == -1:
+					return('No pods left!')
+#				prog = self.myMpc.this_station()
+				prog = self.myMpc.progname()
+				self.myInfoDisplay.show_prog_info(prog)
+				self.myInfoDisplay.prog = prog	# displayed by background task
+			elif button == BUTTONSTOP:
+				self.myInfoDisplay.writelabels(False, True)
+				self.myMpc.toggle()
+				self.myInfoDisplay.show_prog_info(self.myMpc.progname())
+			elif button == BUTTONREBOOT:
+				print 'Rebooting...'
+				self.myMpc.stop()
+				self.myInfoDisplay.writerow(1, 'Rebooting...     ')
+				time.sleep(2)
+				p = subprocess.call(['reboot'])
+				return(1)
+			elif button == BUTTONHALT:
+				print 'Halting...'
+				self.myMpc.stop()
+				self.myInfoDisplay.writerow(1, 'Halting...      ')
+				time.sleep(2)
+				p = subprocess.call(['halt'])
+				return(1)
+			elif button == BUTTONVOLUP:
+				v = self.myMpc.chgvol(+1)
+				self.show_vol_bar(v)
+			elif button == BUTTONVOLDOWN:
+				v = self.myMpc.chgvol(-1)
+				self.show_vol_bar(v)
+#		except:
+#			self.logger.warning('Error in process_button_presses: Value='+str(button))
+#			return(-1)
+		button = 0
 		return(0)
 		
 	def _processbuttons(self):

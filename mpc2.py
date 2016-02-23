@@ -60,8 +60,7 @@ class Mpc:
 		
 	def cleanup(self):
 		self.stop()
-		self.myBBC.Event.set()			# send the stop signal
-		self.myBBC.t.cancel()			# stop collecting prog names
+		self.myBBC.cleanup()
 		
 	def next_station(self):
 		no_of_stations = self.myBBC.stationcounter()
@@ -180,7 +179,7 @@ class Mpc:
 		try:
 			self.client.stop()
 		except mpd.ConnectionError:
-			self.logger.warning('mpd connection error.')
+			self.logger.warning('Stop: mpd connection error.')
 			try:
 				self.client.connect("localhost", 6600)
 				self.client.stop()
@@ -214,7 +213,7 @@ class Mpc:
 			try:
 				self.client.play(self.station)
 			except mpd.ConnectionError:
-				self.logger.warning('mpd connection error.')
+				self.logger.warning('Play: mpd connection error.')
 				try:
 					self.client.connect("localhost", 6600)
 					self.client.play(self.station)
@@ -351,14 +350,12 @@ class Mpc:
 			self.client.play(self.podnumber)
 			return(self.podnumber)
 		else:						# its radio mode
-#			self.logger.info("Next radio station: moving to "+str(self.station+1)+" out of "+str(self.myBBC.stationcounter()))
 			self.station = self.station + 1
-#			print "Next: station="+str(self.station)
-#			print "Count="+str(self.myBBC.stationcounter()+1)
 			if self.station > self.myBBC.stationcounter()-1:
 				self.station = 0
+			x= str(self.station)
+			self.logger.info("Next: moving to station "+x)
 			self.client.play(self.station)
-#			self.play()
 			return(self.station)
 
 	def progname(self):

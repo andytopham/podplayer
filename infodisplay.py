@@ -52,6 +52,7 @@ class InfoDisplay():
 		self.lasttime = 0
 		self.delta = 0.001
 		self.scroll_pointer = SCROLL_PAUSE
+		self.prog = 'Info test'
 
 	def cleanup(self):
 		self.t.cancel()						# cancel timer for update row
@@ -68,6 +69,15 @@ class InfoDisplay():
 		if row < self.rowcount:
 			self.myScreen.q.put([row, string])	# add to the queue
 
+	def update_display(self):
+		self.logger.info('Updating display')
+		self.update_info_row()
+		self.show_prog_info(self.prog)
+		self.t = threading.Timer(INFOROWUPDATEPERIOD, self.update_display)	# run every 60secs
+		self.t.start()
+		self.t.name = 'displayupdate'
+		return(0)
+		
 	def update_info_row(self):
 		'''Time and temperature display on the info line = bottom row.
 			This now repeats itself courtesy of the Timer.'''
@@ -75,9 +85,6 @@ class InfoDisplay():
 		self.logger.info('Update info row:'+clock)
 		self.myScreen.write_radio_extras(clock, self.myWeather.wunder_temperature)
 		self.myScreen.write_button_labels(False, False)
-		self.t = threading.Timer(INFOROWUPDATEPERIOD, self.update_info_row)	# run every 60secs
-		self.t.start()
-		self.t.name = 'inforow'
 		return(0)
 	
 	def show_prog_info(self,string):
