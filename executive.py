@@ -19,6 +19,7 @@ BUTTONREBOOT = 6
 BUTTONHALT = 7
 PRESSED = False		# decides which edge the button works on
 AUDIOTIMEOUT = 60*45
+DEBUGTIMEOUT = 90
 
 class Executive:
 	'''The main podplayer looping structure. '''
@@ -58,6 +59,9 @@ class Executive:
 		self.t.start()
 		self.t.name = 'audiot'
 		print threading.enumerate()		# helps debug
+		self.dt = threading.Timer(DEBUGTIMEOUT, self.debugfunc)
+		self.dt.start()
+		self.dt.name = 'debugt'
 		
 	def audiofunc(self):
 		'''Called by the audio timeout Timer. Implements the actual timeout function.'''
@@ -74,6 +78,16 @@ class Executive:
 		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
 		self.t.start()
 		self.t.name = 'audiot'
+	
+	def debugfunc(self):
+		'''Implements the actual timeout function.'''
+		print 'Debug info...'
+		print threading.enumerate()
+		self.logger.info('Debug info')
+		self.dt = threading.Timer(DEBUGTIMEOUT, self.debugfunc)
+		self.dt.start()
+		self.dt.name = 'debugt'
+		return(0)
 	
 	def cleanup(self, string):
 		print 'Cleaning up:', string
@@ -160,7 +174,6 @@ class Executive:
 				self.myInfoDisplay.writelabels(True)
 				if self.myMpc.next() == -1:
 					return('No pods left!')
-#				prog = self.myMpc.this_station()
 				prog = self.myMpc.progname()
 				self.myInfoDisplay.show_prog_info(prog)
 				self.myInfoDisplay.prog = prog	# displayed by background task

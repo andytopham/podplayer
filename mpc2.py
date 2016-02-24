@@ -7,7 +7,7 @@ import time, datetime, logging, subprocess, requests, os
 from bs4 import BeautifulSoup
 from bbcradio import BBCradio
 import mpd
-import pdb
+# import pdb
 # from mpd import MPDClient
 
 RENEWALTIME = 15		# minutes until stream times out
@@ -337,8 +337,6 @@ class Mpc:
 		
 	def next(self):
 		"""Tell mpc to play the next item."""
-#		pdb.set_trace()
-#		print "** This is the Next routine!"
 		self.podmode = False
 		if self.podmode:
 			self.deleteFile()			# get rid of the one just moved from

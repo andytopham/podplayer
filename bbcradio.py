@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 import mpd
 import threading
 
-STATIONNAMERESETTIME = 60
+STATIONNAMERESETTIME = 2*60
 
 class BBCradio(threading.Thread):
 	# These are the indicies to the url array.

@@ -20,10 +20,11 @@ NEXT_STATION_ROW = 8
 SCROLL_PAUSE = -5
 INFOROWUPDATEPERIOD = 60
 
-class InfoDisplay():
+class InfoDisplay(threading.Thread):
 	'''	Richer info on the oled. '''
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
+		threading.Thread.__init__(self, name='infodisplay')
 		self.logger.info("Starting InfoDisplay class")
 		self.myWeather = Weather(keys.key, keys.locn)
 		self.myWeather.start()
