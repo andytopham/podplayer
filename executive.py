@@ -68,6 +68,7 @@ class Executive:
 		self.logger.info('Audio timeout')
 		self.myInfoDisplay.writerow(0,'Timeout              ')
 		self.myMpc.stop()
+		self.myInfoDisplay.prog = 'Timeout               '
 		return(0)
 
 	def reset_audio_timer(self):

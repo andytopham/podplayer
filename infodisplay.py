@@ -46,6 +46,7 @@ class InfoDisplay(threading.Thread):
 			print 'No display specified in keys file. Exiting.'
 			self.logger.error('No display specified in keys file. Exiting.')
 			sys.exit()
+		self.ending = False
 		self.myScreen.start()
 		self.rowcount, self.rowlength = self.myScreen.info()
 		self.writerow(TITLE_ROW, 'Starting up...'.center(self.rowlength))
@@ -53,20 +54,22 @@ class InfoDisplay(threading.Thread):
 		self.lasttime = 0
 		self.delta = 0.001
 		self.scroll_pointer = SCROLL_PAUSE
+		self.scroll_string = '       '
 		self.prog = 'Info test'
-		self.ending = False
 		if testmode:
-			self.timer = 5
+			self.timer = 2
 		else:
 			self.timer = INFOROWUPDATEPERIOD
-
+		self.scroll()
+		
 	def cleanup(self):
-		self.ending = True
-		self.t.cancel()						# cancel timer for update row
+		self.ending = True					# must be first line. 
+		self.t.cancel()						# cancel timer for update display
+		self.scrollt.cancel()
 		self.myWeather.Event.set()			# send the stop signal
 		self.myScreen.Event.set()
 		time.sleep(2)
-#		print threading.enumerate()			# useful for debug orphaned threads
+		self.logger.info('Ended infodisplay.')
 		
 	def clear(self):
 		'''Clear screen.'''
@@ -81,7 +84,6 @@ class InfoDisplay(threading.Thread):
 		self.logger.info('Updating display')
 		self.update_info_row()
 		self.show_prog_info(self.prog)
-#		print threading.enumerate()
 		if not self.ending:
 			self.t = threading.Timer(self.timer, self.update_display)	
 			self.t.start()
@@ -99,7 +101,7 @@ class InfoDisplay(threading.Thread):
 	
 	def show_prog_info(self,string):
 		'''Display up to 2 rows from bottom of display of the program name and details.'''
-		self.logger.info('proginfo:'+string)
+		self.logger.info('show_prog_info:'+string)
 		retstr, string = self._find_station_name(string)
 		if retstr:						# if the station is recognised.
 			self.myScreen.q.put([TITLE_ROW,retstr.center(self.rowlength)])
@@ -109,17 +111,20 @@ class InfoDisplay(threading.Thread):
 		for i in range(TITLE_ROW+1, self.myScreen.last_prog_row+1): # run through the rest of the rows.
 			string = self._process_next_row(i,string)
 		return(0)
-## Todo: Need to scroll the last row ###		
+		
 	def _process_next_row(self, row, string):
 		'''Called by show_prog_info to process all rows after first row.'''
 		if len(string) > 0:
 			if string[0] == ' ':				# strip off any leading space.
 				string = string[1:]
-			self.myScreen.q.put([row,string[:self.rowlength].ljust(self.rowlength)])
-			string = string[self.rowlength:]
-		else:
+			if row == self.myScreen.last_prog_row:
+				self.scroll_string = string+' '	# tag a space on end to help delete trailing scrolling chars
+			else:
+				self.myScreen.q.put([row,string[:self.rowlength].ljust(self.rowlength)])
+				string = string[self.rowlength:]
+		else:									# nothing left to show
 			if row < 4:
-				string = ''
+				string = '                         '	# blank the last rows
 				self.myScreen.q.put([row,string])
 		return(string)
 	
@@ -147,17 +152,20 @@ class InfoDisplay(threading.Thread):
 			self.lasttime = elapsed
 		return(0)
 		
-# This needs putting into a timer.....####		
-	def scroll(self,row,string):
-		if self.rowcount > 2:	# do not scroll large display
-			return(0)
-		if self.scroll_pointer < 0:
-			self.myScreen.writerow(row,string[0:self.rowlength])
-		else:
-			self.myScreen.writerow(row,string[self.scroll_pointer:self.scroll_pointer+self.rowlength])
-		self.scroll_pointer += 1
-		if  self.scroll_pointer > len(string):
-			self.scroll_pointer = SCROLL_PAUSE
+	def scroll(self):
+		if len(self.scroll_string) > 10:
+			row = 2
+			if self.scroll_pointer < 0:
+				self.myScreen.q.put([row, self.scroll_string[0:self.rowlength]])
+			else:
+				self.myScreen.q.put([row, self.scroll_string[self.scroll_pointer:self.scroll_pointer+self.rowlength]])
+			self.scroll_pointer += 1
+			if  self.scroll_pointer > len(self.scroll_string):
+				self.scroll_pointer = SCROLL_PAUSE
+		if not self.ending:
+			self.scrollt = threading.Timer(.5, self.scroll)
+			self.scrollt.start()
+			self.scrollt.name = 'scroll'
 		return(0)
 
 	def writelabels(self, next = False, stop = False):
@@ -169,25 +177,28 @@ class InfoDisplay(threading.Thread):
 if __name__ == "__main__":
 	logging.basicConfig(filename='log/infodisplay.log',
 						filemode='w',
-						level=logging.WARNING)	#filemode means that we do not append anymore
+						level=logging.INFO)	#filemode means that we do not append anymore
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running infodisplay class as a standalone app")
 
 	print 'Infodisplay test'		
 	myID = InfoDisplay(testmode = True)
 	myID.update_display()
-	string = ['String1. Lets put a lot of text here so that it wraps.', 
-		'Stringsss 2. A different lot of text and hopefully still wrapping.', 
+#	print threading.enumerate()
+#	myID.writelabels(True)
+#	time.sleep(2)
+	string = ['String zero.',
+		'String1. Lets put a lot of text here so that it wraps and in fact need plenty to test scroll.', 
+		'Strings 2.', 
 		'Third string', 
-		'Prog name goes here. And then the extra info on these lines.', 
+		'Prog name goes here. And then the extra super good stuff in the info goes into these lines.', 
 		'Final string']
-	for i in range(5):
-#		myID.prog = 'This is a very long text string to test where the programme information would normally be printed.'
+	for i in range(3):
+		print 'String ',i
 		myID.prog = string[i]
-		time.sleep(8)
-		myID.writelabels(True)
-		time.sleep(2)
+		time.sleep(15)
 	print 'cleaning up'
 	myID.cleanup()
+	print threading.enumerate()
 	print 'Main prog is finished.'
 	

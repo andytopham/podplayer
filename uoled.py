@@ -45,7 +45,7 @@ class Screen(threading.Thread):
 		time.sleep(1)
 	
 	def run(self):
-		print 'Starting uoled queue manager.'
+		self.logger.info('Starting uoled queue manager.')
 		myevent = False
 		while not myevent:
 			while not self.q.empty():
@@ -53,7 +53,7 @@ class Screen(threading.Thread):
 				self.writerow(entry[0], entry[1])	
 				self.q.task_done()
 			myevent = self.Event.wait(.5)	# wait for this timeout or the flag being set.
-		print 'Uoled exiting'
+		self.logger.info('Uoled exiting')
 	
 	def clear(self):
 		self.led.clear_display() # This clears the display but only when there is a led.display() as well!

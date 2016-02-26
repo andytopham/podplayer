@@ -78,6 +78,8 @@ if __name__ == "__main__" :
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+
 					". Running keyboardpoller class as a standalone app")
 
+	print 'Scanning keyboard for commands to run.'
+	print 'Options: n s p v w x'
 	poller = KeyboardPoller()
 	poller.start()
 	time.sleep(1)

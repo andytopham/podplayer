@@ -19,6 +19,7 @@ pip install python-mpd2
 pip install logging
 pip install feedparser
 pip install urllib3
+pip install readchar
 echo '** Installing pygame **'
 apt-get -y install python-pygame
 echo '** Installing wiringpi2 (needed for gaugette) **'
