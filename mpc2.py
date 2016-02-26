@@ -21,7 +21,7 @@ class Mpc:
 	VOLSTEP = 5
 	STOPPEDPROGNAME = "  Stopped              "
 	
-	def __init__(self):
+	def __init__(self, test_mode = False):
 		self.logger = logging.getLogger(__name__)
 		self.playState = self.STOPPED		# playing or stopped
 		self.station = 0					# station number
@@ -36,9 +36,12 @@ class Mpc:
 		self.client.connect("localhost", 6600)
 		self.client.clear()
 		self.logger.info("python-mpd2 version:"+self.client.mpd_version)
-		self.myBBC = BBCradio(self.client)
+		if test_mode:
+			self.myBBC = BBCradio(self.client, 5)
+		else:		# normal mode
+			self.myBBC = BBCradio(self.client)
 		self.myBBC.start()
-		self.myBBC.stationname()
+		self.myBBC.stationname()		# this starts the perpetual loop collecting the names!
 		self.updatedb()						# just run this occasionally
 		self.setvol(40)
 		self.station = 0
@@ -414,7 +417,7 @@ if __name__ == "__main__":
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running mpc class as a standalone app")
 
 	print 'My mpc test prog'
-	myMpc = Mpc()
+	myMpc = Mpc(True)		# set test mode on
 	myMpc.play()
 	time.sleep(2)
 	print 'Getting prog name'
@@ -425,11 +428,14 @@ if __name__ == "__main__":
 	time.sleep(2)
 	print 'Starting'
 	myMpc.toggle()	
-	time.sleep(2)
-	print 'Next station'
-	myMpc.next()
-	print myMpc.progname()	
-	time.sleep(90)
+	time.sleep(4)
+	print 'Now loop 5 times.'
+	for i in range(5):
+		print 'Next station'
+		myMpc.next()
+		print myMpc.progname()	
+		time.sleep(4)
+#	time.sleep(5)
 	print 'Exiting main prog.'
 	myMpc.cleanup()
 	

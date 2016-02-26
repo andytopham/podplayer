@@ -32,12 +32,10 @@ class Executive:
 		self.stop = False
 		self.volup = False
 		self.voldown = False
-#		self.vol = 0
-#		self.pod = 0
 		self.chgvol_flag = 0
 		self.maxelapsed = 0
-#		self.button_pressed_time = datetime.datetime.now()
-
+		self.error_string = ''
+		
 	def startup(self, verbosity):
 		'''Initialisation for the objects that have variable startup behaviour'''
 		self.myInfoDisplay = infodisplay.InfoDisplay()
@@ -55,12 +53,13 @@ class Executive:
 		remaining = self.myMpc.check_time_left()
 		self.myInfoDisplay.prog = self.myMpc.progname()
 		self.myInfoDisplay.update_display()
+		self.ending = False
 		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
 		self.t.start()
 		self.t.name = 'audiot'
 		print threading.enumerate()		# helps debug
 		self.dt = threading.Timer(DEBUGTIMEOUT, self.debugfunc)
-		self.dt.start()
+#		self.dt.start()
 		self.dt.name = 'debugt'
 		
 	def audiofunc(self):
@@ -75,26 +74,31 @@ class Executive:
 		'''Resets the audio timeout Timer. Called by each button push.'''
 		self.t.cancel()
 		time.sleep(1)
-		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
-		self.t.start()
-		self.t.name = 'audiot'
+		if not self.ending:
+			self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
+			self.t.start()
+			self.t.name = 'audiot'
 	
 	def debugfunc(self):
 		'''Implements the actual timeout function.'''
 		print 'Debug info...'
 		print threading.enumerate()
 		self.logger.info('Debug info')
-		self.dt = threading.Timer(DEBUGTIMEOUT, self.debugfunc)
-		self.dt.start()
-		self.dt.name = 'debugt'
+		if not self.ending:
+			self.dt = threading.Timer(DEBUGTIMEOUT, self.debugfunc)
+			self.dt.start()
+			self.dt.name = 'debugt'
 		return(0)
 	
 	def cleanup(self, string):
+		self.ending = True
 		print 'Cleaning up:', string
 		self.myInfoDisplay.t.cancel()	# stop updating the info row
 		self.t.cancel()					# stop the audio timer
+		self.dt.cancel					# stop the debug timer
 		self.myInfoDisplay.clear()
 		self.myInfoDisplay.writerow(0,string)
+		self.myInfoDisplay.writerow(1, self.error_string)
 		time.sleep(2)
 		self.myInfoDisplay.cleanup()	# needed to stop weather polling.
 		self.myKey.cleanup()

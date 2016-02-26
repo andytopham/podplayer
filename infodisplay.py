@@ -22,7 +22,7 @@ INFOROWUPDATEPERIOD = 60
 
 class InfoDisplay(threading.Thread):
 	'''	Richer info on the oled. '''
-	def __init__(self):
+	def __init__(self, testmode = False):
 		self.logger = logging.getLogger(__name__)
 		threading.Thread.__init__(self, name='infodisplay')
 		self.logger.info("Starting InfoDisplay class")
@@ -54,13 +54,19 @@ class InfoDisplay(threading.Thread):
 		self.delta = 0.001
 		self.scroll_pointer = SCROLL_PAUSE
 		self.prog = 'Info test'
+		self.ending = False
+		if testmode:
+			self.timer = 5
+		else:
+			self.timer = INFOROWUPDATEPERIOD
 
 	def cleanup(self):
+		self.ending = True
 		self.t.cancel()						# cancel timer for update row
 		self.myWeather.Event.set()			# send the stop signal
 		self.myScreen.Event.set()
 		time.sleep(2)
-		print threading.enumerate()			# useful for debug orphaned threads
+#		print threading.enumerate()			# useful for debug orphaned threads
 		
 	def clear(self):
 		'''Clear screen.'''
@@ -71,12 +77,15 @@ class InfoDisplay(threading.Thread):
 			self.myScreen.q.put([row, string])	# add to the queue
 
 	def update_display(self):
+		'''Update the whole display, including the prog info and the status line.'''
 		self.logger.info('Updating display')
 		self.update_info_row()
 		self.show_prog_info(self.prog)
-		self.t = threading.Timer(INFOROWUPDATEPERIOD, self.update_display)	# run every 60secs
-		self.t.start()
-		self.t.name = 'displayupdate'
+#		print threading.enumerate()
+		if not self.ending:
+			self.t = threading.Timer(self.timer, self.update_display)	
+			self.t.start()
+			self.t.name = 'displayupdate'
 		return(0)
 		
 	def update_info_row(self):
@@ -97,11 +106,12 @@ class InfoDisplay(threading.Thread):
 		else:
 			self.myScreen.q.put([TITLE_ROW,string[:self.rowlength].ljust(self.rowlength)])
 			string = string[self.rowlength:]	
-		for i in range(TITLE_ROW+1, self.myScreen.last_prog_row+1):
+		for i in range(TITLE_ROW+1, self.myScreen.last_prog_row+1): # run through the rest of the rows.
 			string = self._process_next_row(i,string)
 		return(0)
-## Need to scroll the last row ###		
+## Todo: Need to scroll the last row ###		
 	def _process_next_row(self, row, string):
+		'''Called by show_prog_info to process all rows after first row.'''
 		if len(string) > 0:
 			if string[0] == ' ':				# strip off any leading space.
 				string = string[1:]
@@ -114,7 +124,7 @@ class InfoDisplay(threading.Thread):
 		return(string)
 	
 	def _find_station_name(self,string):
-		'''Decode the BBC station from the proginfo.'''
+		'''Called by show_prog_info. Decode the BBC station from the proginfo.'''
 		a = string.split()
 		if a[0] == 'BBC':
 			if a[3] == '6':
@@ -164,12 +174,20 @@ if __name__ == "__main__":
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running infodisplay class as a standalone app")
 
 	print 'Infodisplay test'		
-	myID = InfoDisplay()
-	myID.show_prog_info('This is a very long text string to test where the programme information would normally be printed.')
-#	print 'Weather thread has been forked.'
-	time.sleep(5)
+	myID = InfoDisplay(testmode = True)
+	myID.update_display()
+	string = ['String1. Lets put a lot of text here so that it wraps.', 
+		'Stringsss 2. A different lot of text and hopefully still wrapping.', 
+		'Third string', 
+		'Prog name goes here. And then the extra info on these lines.', 
+		'Final string']
+	for i in range(5):
+#		myID.prog = 'This is a very long text string to test where the programme information would normally be printed.'
+		myID.prog = string[i]
+		time.sleep(8)
+		myID.writelabels(True)
+		time.sleep(2)
 	print 'cleaning up'
 	myID.cleanup()
-#	print 'Weather has been told to stop.'
 	print 'Main prog is finished.'
 	
