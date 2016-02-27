@@ -160,7 +160,7 @@ class InfoDisplay(threading.Thread):
 			else:
 				self.myScreen.q.put([row, self.scroll_string[self.scroll_pointer:self.scroll_pointer+self.rowlength]])
 			self.scroll_pointer += 1
-			if  self.scroll_pointer > len(self.scroll_string):
+			if  self.scroll_pointer > (len(self.scroll_string)-15):
 				self.scroll_pointer = SCROLL_PAUSE
 		if not self.ending:
 			self.scrollt = threading.Timer(.5, self.scroll)

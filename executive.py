@@ -100,6 +100,7 @@ class Executive:
 		self.myInfoDisplay.clear()
 		self.myInfoDisplay.writerow(0,string)
 		self.myInfoDisplay.writerow(1, self.error_string)
+		self.myInfoDisplay.writerow(2, '                    ')
 		time.sleep(2)
 		self.myInfoDisplay.cleanup()	# needed to stop weather polling.
 		self.myKey.cleanup()
@@ -108,6 +109,7 @@ class Executive:
 		self.myGpio.cleanup()
 		time.sleep(3)
 		print threading.enumerate()		# should just show the main thread
+		self.myInfoDisplay.writerow(2, '                    ')
 		self.logger.warning('Finished exec cleanup')
 		sys.exit(0)
 
