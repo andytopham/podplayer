@@ -142,7 +142,7 @@ class Executive:
 		while True:
 			self.chk_key()				# poll to see if there has been a key pressed
 			if self.myMpc.chk_station_load():
-				raise StationLoad
+				self.cleanup('Station load')
 			try:
 				if self.die == True:
 					raise KeyboardInterrupt
@@ -150,8 +150,6 @@ class Executive:
 				reboot = self.process_button_presses()
 				if reboot == 1:
 					self.cleanup('Reboot')		# need to add to this!
-			except StationLoad:
-				self.cleanup('Station load')
 			except KeyboardInterrupt:
 				self.cleanup('Keyboard interrupt')
 			except:			# all other errors - should never get here

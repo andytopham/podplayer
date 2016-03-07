@@ -71,7 +71,7 @@ class InfoDisplay(threading.Thread):
 		self.myWeather.Event.set()			# send the stop signal
 		self.myScreen.Event.set()
 		time.sleep(2)
-		self.logger.info('Ended infodisplay.')
+		self.logger.info('Finished infodisplay cleanup.')
 		
 	def clear(self):
 		'''Clear screen.'''
@@ -83,7 +83,7 @@ class InfoDisplay(threading.Thread):
 
 	def update_display(self):
 		'''Update the whole display, including the prog info and the status line.'''
-		self.logger.info('Updating display')
+#		self.logger.info('Updating display')
 		self.update_info_row()
 		self.show_prog_info(self.prog)
 		if not self.ending:
@@ -96,7 +96,7 @@ class InfoDisplay(threading.Thread):
 		'''Time and temperature display on the info line = bottom row.
 			This now repeats itself courtesy of the Timer.'''
 		clock = time.strftime("%R")
-		self.logger.info('Update info row:'+clock)
+#		self.logger.info('Update info row:'+clock)
 		if self.chgvol_flag:
 			self.myScreen.write_radio_extras(self.vol_string, '  ', True)
 		else:
@@ -106,7 +106,7 @@ class InfoDisplay(threading.Thread):
 	
 	def show_prog_info(self,string):
 		'''Display up to 2 rows from bottom of display of the program name and details.'''
-		self.logger.info('show_prog_info:'+string)
+#		self.logger.info('show_prog_info:'+string)
 		retstr, string = self._find_station_name(string)
 		if retstr:						# if the station is recognised.
 			self.myScreen.q.put([TITLE_ROW,retstr.center(self.rowlength)])

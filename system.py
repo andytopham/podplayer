@@ -22,11 +22,11 @@ class System:
 		percent = line.split()[4]
 		print 'Disk space used: '+percent
 		self.logger.warning('Disk space used: '+percent)
-		if int(percent.rstrip('%')) > 50:
+		if int(percent.rstrip('%')) > 80:
 			self.logger.warning('Running out of disk space. Used: '+percent)
 			self.logger.warning('Find disk space usage by: sudo du -h -d 1')
 			return(0)
-		if int(percent.rstrip('%')) > 80:
+		if int(percent.rstrip('%')) > 90:
 			self.logger.warning('Seriously running out of disk space. Used: '+percent)
 			self.logger.warning('Find disk space usage by: sudo du -h -d 1')
 			return(1)		
