@@ -28,6 +28,8 @@ class InfoDisplay(threading.Thread):
 		self.logger.info("Starting InfoDisplay class")
 		self.myWeather = Weather(keys.key, keys.locn)
 		self.myWeather.start()
+		self.chgvol_flag = False
+		self.vol_string = ' '
 		print 'board = ',keys.board
 		if keys.board == 'oled4':
 			import oled
@@ -60,12 +62,12 @@ class InfoDisplay(threading.Thread):
 			self.timer = 2
 		else:
 			self.timer = INFOROWUPDATEPERIOD
-		self.scroll()
+#		self.scroll()
 		
 	def cleanup(self):
 		self.ending = True					# must be first line. 
 		self.t.cancel()						# cancel timer for update display
-		self.scrollt.cancel()
+#		self.scrollt.cancel()
 		self.myWeather.Event.set()			# send the stop signal
 		self.myScreen.Event.set()
 		time.sleep(2)
@@ -95,7 +97,10 @@ class InfoDisplay(threading.Thread):
 			This now repeats itself courtesy of the Timer.'''
 		clock = time.strftime("%R")
 		self.logger.info('Update info row:'+clock)
-		self.myScreen.write_radio_extras(clock, self.myWeather.wunder_temperature)
+		if self.chgvol_flag:
+			self.myScreen.write_radio_extras(self.vol_string, '  ', True)
+		else:
+			self.myScreen.write_radio_extras(clock, self.myWeather.wunder_temperature)
 		self.myScreen.write_button_labels(False, False)
 		return(0)
 	
@@ -118,7 +123,8 @@ class InfoDisplay(threading.Thread):
 			if string[0] == ' ':				# strip off any leading space.
 				string = string[1:]
 			if row == self.myScreen.last_prog_row:
-				self.scroll_string = string+' '	# tag a space on end to help delete trailing scrolling chars
+				self.myScreen.q.put([row,string[:self.rowlength].ljust(self.rowlength)])
+#				self.scroll_string = string+' '	# tag a space on end to help delete trailing scrolling chars
 			else:
 				self.myScreen.q.put([row,string[:self.rowlength].ljust(self.rowlength)])
 				string = string[self.rowlength:]
@@ -126,6 +132,7 @@ class InfoDisplay(threading.Thread):
 			if row < 4:
 				string = '                         '	# blank the last rows
 				self.myScreen.q.put([row,string])
+				self.scroll_string = '           '
 		return(string)
 	
 	def _find_station_name(self,string):

@@ -33,6 +33,7 @@ class BBCradio(threading.Thread):
 		self.stationcount = 0
 		self.bbcname = ['Not yet available']*5
 		self.ending = False
+		self.load_error = False
 
 	def run(self):
 		print 'Starting bbc collection.'
@@ -41,6 +42,7 @@ class BBCradio(threading.Thread):
 			if self.load() != 0:
 				print 'BBC load error.'
 				self.logger.error('BBC load error')
+				self.load_error = True
 				myevent = True
 			time.sleep(2)			# temporary
 			myevent = self.Event.wait(60*60)		# wait for this timeout or the flag being set.

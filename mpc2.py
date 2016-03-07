@@ -61,6 +61,9 @@ class Mpc:
 		print 'mpd connected'
 		return(0)
 		
+	def chk_station_load(self):
+		return(self.myBBC.load_error)
+		
 	def cleanup(self):
 		self.stop()
 		self.myBBC.cleanup()

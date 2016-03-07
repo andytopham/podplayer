@@ -21,27 +21,27 @@ radio ->executive	-> gpio 	-> infodisplay	-> tft or oled
 '''
 
 def _setup_sockets():
-	'''For client/server operation. Not being used yet.'''
+	'''For client/server operation.'''
 	# Enable server and remote client
 	MySocket = comms.Comms()
-	if config.master == True:
-		print "I am a server"
-		slave = MySocket.registerserversetup()
-		if slave != 0:
-			time.sleep(1)
-			# send the initial handshake message
-			MySocket.send2cmd(slave,"Msg from master.")
-			# ready to send commands, but setup the link first...
-			MySocket.setupsender(slave)
-	else:
-		print "I am a client"
-		slave = 0
-		MySocket.registerclient(config.remote)
-		# now we are registered, just fetch the initial handshake message.
-		MySocket.setuplistener()
-		# now listen for real commands
-	#	time.sleep(2)
-		MySocket.cmdlistener()
+	print "I am a server"
+	slave = MySocket.registerserversetup()
+	if slave != 0:
+		time.sleep(1)
+		# send the initial handshake message
+		MySocket.send2cmd(slave,"Msg from master.")
+		# ready to send commands, but setup the link first...
+		MySocket.setupsender(slave)
+
+def client():
+	print "I am a client"
+	slave = 0
+	MySocket.registerclient(config.remote)
+	# now we are registered, just fetch the initial handshake message.
+	MySocket.setuplistener()
+	# now listen for real commands
+#	time.sleep(2)
+	MySocket.cmdlistener()
 			
 def _radio_start(v=0):
 	'''	The main routine for iRadio.'''

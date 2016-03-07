@@ -32,13 +32,13 @@ class Executive:
 		self.stop = False
 		self.volup = False
 		self.voldown = False
-		self.chgvol_flag = 0
+		self.chgvol_flag = False
 		self.maxelapsed = 0
 		self.error_string = ''
 		
 	def startup(self, verbosity):
 		'''Initialisation for the objects that have variable startup behaviour'''
-		self.myInfoDisplay = infodisplay.InfoDisplay()
+		self.myInfoDisplay = infodisplay.InfoDisplay(True)
 		self.myKey = keyboardpoller.KeyboardPoller()
 		self.myKey.start()
 		self.myMpc = Mpc()
@@ -141,6 +141,8 @@ class Executive:
 		self.lasttime = time.time()		# has to be here to avoid long initial delay showing.
 		while True:
 			self.chk_key()				# poll to see if there has been a key pressed
+			if self.myMpc.chk_station_load():
+				raise StationLoad
 			try:
 				if self.die == True:
 					raise KeyboardInterrupt
@@ -148,9 +150,12 @@ class Executive:
 				reboot = self.process_button_presses()
 				if reboot == 1:
 					self.cleanup('Reboot')		# need to add to this!
+			except StationLoad:
+				self.cleanup('Station load')
 			except KeyboardInterrupt:
 				self.cleanup('Keyboard interrupt')
 			except:			# all other errors - should never get here
+				print "Unexpected error:", sys.exc_info()[0]
 				self.cleanup('Master loop error')
 
 	def _show_time_taken(self):
@@ -204,10 +209,10 @@ class Executive:
 				return(1)
 			elif button == BUTTONVOLUP:
 				v = self.myMpc.chgvol(+1)
-				self.show_vol_bar(v)
+				self.create_vol_bar(v)
 			elif button == BUTTONVOLDOWN:
 				v = self.myMpc.chgvol(-1)
-				self.show_vol_bar(v)
+				self.create_vol_bar(v)
 #		except:
 #			self.logger.warning('Error in process_button_presses: Value='+str(button))
 #			return(-1)
@@ -241,7 +246,31 @@ class Executive:
 			button = BUTTONVOLDOWN
 #		self.logger.info("processbuttons: "+str(button))
 		return(button)
+	
+	def clear_vol_flag(self):
+		self.myInfoDisplay.chgvol_flag = False
 			
+	def create_vol_bar(self, volume):
+		'''Draw the volume bar on the display.'''
+		self.logger.info('Create vol bar '+str(volume))
+		self.myInfoDisplay.chgvol_flag = True
+		try:
+#			self.myTimeout.setVolumeTimeout()
+#			self.temp_progname = self.programmename
+#			self.programmename = ''
+			self.myInfoDisplay.vol_string = ''
+			for i in range(0, int(volume), 5):		# add a char every 5%
+				self.myInfoDisplay.vol_string += ">"
+			self.myInfoDisplay.vol_string += "      "
+#			self.myInfoDisplay.displayvol(self.programmename)
+			if not self.ending:
+				self.volt = threading.Timer(10, self.clear_vol_flag)	# clear display after 10s
+				self.volt.start()
+				self.volt.name = 'volflag'
+		except:
+			print ' trouble at t mill'
+		return(0)		
+		
 	def _show_vol_bar(self, volume):
 		'''Draw the volume bar on the display.'''
 		self.logger.info('vol bar '+str(volume))
