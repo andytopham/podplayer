@@ -5,8 +5,6 @@ from bs4 import BeautifulSoup
 import mpd
 import threading
 
-STATIONNAMERESETTIME = 2*60
-
 class BBCradio(threading.Thread):
 	# These are the indicies to the url array.
 	URLID = 0
@@ -25,31 +23,33 @@ class BBCradio(threading.Thread):
 #			["BBCR5",		"bbc5live.pls",		"http://www.bbc.co.uk/radio/player/bbc_radio_five_live"],
 			["BBCR6",		"bbc6music.pls",	"http://www.bbc.co.uk/radio/player/bbc_6music"]
 			]		
-	def __init__(self, mpd_channel):
+	def __init__(self, mpd_channel, namerefreshtime = 2*60):
 		self.Event = threading.Event()
 		threading.Thread.__init__(self, name='mybbc')
 		self.mpd_channel = mpd_channel
+		self.namerefreshtime = namerefreshtime
 		self.logger = logging.getLogger(__name__)
 		self.expiry_times = [None]*6
 		self.stationcount = 0
 		self.bbcname = ['Not yet available']*5
-#		self.t = threading.Timer(STATIONNAMERESETTIME, self.stationname)
-#		self.t.start()
-#		self.t.name = 'bbcstnname'
+		self.ending = False
+		self.load_error = False
 
 	def run(self):
 		print 'Starting bbc collection.'
 		myevent = False
 		while not myevent:
-			if self.load(self.mpd_channel) != 0:
+			if self.load() != 0:
 				print 'BBC load error.'
 				self.logger.error('BBC load error')
+				self.load_error = True
 				myevent = True
 			time.sleep(2)			# temporary
 			myevent = self.Event.wait(60*60)		# wait for this timeout or the flag being set.
 		print 'BBC exiting.'
 
 	def cleanup(self):
+		self.ending = True			# set a flag in case we are in the middle of the timer routine.
 		self.t.cancel()
 		time.sleep(1)
 		self.Event.set()			# send the stop signal
@@ -142,10 +142,10 @@ class BBCradio(threading.Thread):
 		print 'Loaded BBC stations.'
 		return(0)
 		
-	def load(self, mpd_channel):
+	def load(self):
 		'''Load the stations stored in the urls array. Feb 2015 edition. '''
 		try:
-			mpd_channel.connect("localhost", 6600)		# refresh the connection
+			self.mpd_channel.connect("localhost", 6600)		# refresh the connection
 		except:
 			pass		# it must be already connected
 		lines = []
@@ -170,7 +170,7 @@ class BBCradio(threading.Thread):
 			try:
 				self.logger.info("Loading: "+line[6:])
 				self._get_end_time(index, line[6:])
-				mpd_channel.addid(line[6:].rstrip('\n').rstrip('\r')) # extra \r to remove with new format
+				self.mpd_channel.addid(line[6:].rstrip('\n').rstrip('\r')) # extra \r to remove with new format
 			except:
 				self.logger.warning("Failed to add file to playlist: "+line[6:])
 				return(-1)
@@ -220,9 +220,15 @@ class BBCradio(threading.Thread):
 				#print line[6:]
 				print line[90:]
 
+	def debug(self):
+		self.logger.info('BBC debug: '+datetime.datetime.now().strftime('%H:%M:%S'))
+		threading.enumerate()
+	
 	def stationname(self):
 		"""Fetch the names of all the BBC programmes."""
+#		print 'Start: ',datetime.datetime.now().strftime('%d %b %H:%M')
 		self.logger.info("Stationname: Fetching BBC radio program names.")
+		self.debug()
 #		print 'Fetching BBC names'
 		for station in range(4):
 			row = self.urls[station]
@@ -240,12 +246,16 @@ class BBCradio(threading.Thread):
 			self.logger.info("Program name:"+programmename)
 #			print programmename
 			self.bbcname[station] = programmename
-		# restart the timer
-		self.t = threading.Timer(STATIONNAMERESETTIME, self.stationname)
-		self.t.start()
-		self.t.name = 'bbcstnname'
+		if self.ending:
+			self.logger.info('BBCstationname ending.')
+			return(0)
+		else:
+			self.logger.info('BBCstationname: restart the timer')
+			self.t = threading.Timer(self.namerefreshtime, self.stationname)
+			self.t.name = 'bbcstnname'
+			self.t.start()
+			self.logger.info("BBCstationname: Finished BBC radio program names.")
 
-				
 if __name__ == "__main__":
 	print "Running bbcradio class as a standalone app"
 	logging.basicConfig(filename='log/bbcradio.log',
@@ -253,8 +263,6 @@ if __name__ == "__main__":
 						level=logging.INFO)	#filemode means that we do not append anymore
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')+". Running bbcradio class as a standalone app")
-
-	myBBC = BBCradio()
 	
 	client = mpd.MPDClient()
 	client.timeout = 10 # seconds
@@ -262,5 +270,12 @@ if __name__ == "__main__":
 	client.connect("localhost", 6600)
 	client.clear()
 #	self.logger.info("python-mpd2 version:"+client.mpd_version)
-	myBBC.load(client)
+	myBBC = BBCradio(client, 10)		# test mode
+	myBBC.load()
+	print 'Collecting station names.'
+	myBBC.stationname()
+	print 'Sleeping a bit.'
+	time.sleep(20)
+	print 'cleaning up'
+	myBBC.cleanup()
 #	myBBC._stationscanner()

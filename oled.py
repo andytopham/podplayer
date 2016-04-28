@@ -81,8 +81,11 @@ class Screen(threading.Thread):
 			self.q.put([0,'Stop            '])
 			return(0)
 		
-	def write_radio_extras(self, clock, temperature):
-		self.q.put([self.rowcount-1,'{0:5s}{1:7.1f}^C'.format(clock.ljust(self.rowlength-9),float(temperature))])		
+	def write_radio_extras(self, string1, temperature, chgvol_flag = False):
+		if chgvol_flag:
+			self.q.put([self.rowcount-1, string1])
+		else:
+			self.q.put([self.rowcount-1,'{0:5s}{1:7.1f}^C'.format(string1.ljust(self.rowlength-9),float(temperature))])		
 		return(0)
 		
 	def clear(self):

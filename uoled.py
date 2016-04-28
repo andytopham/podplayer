@@ -33,6 +33,7 @@ class Screen(threading.Thread):
 		self.rowcount = rowcount
 		self.rowlength = ROWLENGTH
 		self.last_prog_row = LAST_PROG_ROW
+#		self.last_prog_row = rowcount-1
 		self.led = gaugette.ssd1306.SSD1306(reset_pin=RESET_PIN, dc_pin=DC_PIN)
 		self.led.begin()
 		self.led.clear_display() # This clears the display but only when there is a led.display() as well!
@@ -44,7 +45,7 @@ class Screen(threading.Thread):
 		time.sleep(1)
 	
 	def run(self):
-		print 'Starting uoled queue manager.'
+		self.logger.info('Starting uoled queue manager.')
 		myevent = False
 		while not myevent:
 			while not self.q.empty():
@@ -52,7 +53,7 @@ class Screen(threading.Thread):
 				self.writerow(entry[0], entry[1])	
 				self.q.task_done()
 			myevent = self.Event.wait(.5)	# wait for this timeout or the flag being set.
-		print 'Uoled exiting'
+		self.logger.info('Uoled exiting')
 	
 	def clear(self):
 		self.led.clear_display() # This clears the display but only when there is a led.display() as well!
@@ -66,9 +67,9 @@ class Screen(threading.Thread):
 	def write_button_labels(self, next, stop):
 		# These are the botton labels. No labels with small display.
 		if next == True:
-			self.q.put([0,'Next            '])
+			self.q.put([0,'Next                '])
 		if stop == True:
-			self.q.put([0,'Stop            '])
+			self.q.put([0,'Stop                '])
 			return(0)
 		
 	def write_radio_extras(self, clock, temperature):
@@ -107,7 +108,7 @@ if __name__ == "__main__":
 	time.sleep(2)
 	clock = time.strftime("%R")
 	myScreen.write_radio_extras(clock, '9.9')
-	myScreen.q.put([2,'Next msg'])
+	myScreen.q.put([2,'Test passed.'])
 	time.sleep(5)
 	print 'Ending process'
 	myScreen.Event.set()

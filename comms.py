@@ -182,7 +182,7 @@ if __name__ == "__main__":
 
 	# This demo just does a handshake back and forwards.
 	mySocket = Comms()
-	if config.master == True:
+	if True:
 		print "I am a server"
 		slave = mySocket.registerserversetup()
 #		time.sleep(2)

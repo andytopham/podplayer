@@ -32,15 +32,13 @@ class Executive:
 		self.stop = False
 		self.volup = False
 		self.voldown = False
-#		self.vol = 0
-#		self.pod = 0
-		self.chgvol_flag = 0
+		self.chgvol_flag = False
 		self.maxelapsed = 0
-#		self.button_pressed_time = datetime.datetime.now()
-
+		self.error_string = ''
+		
 	def startup(self, verbosity):
 		'''Initialisation for the objects that have variable startup behaviour'''
-		self.myInfoDisplay = infodisplay.InfoDisplay()
+		self.myInfoDisplay = infodisplay.InfoDisplay(True)
 		self.myKey = keyboardpoller.KeyboardPoller()
 		self.myKey.start()
 		self.myMpc = Mpc()
@@ -55,12 +53,13 @@ class Executive:
 		remaining = self.myMpc.check_time_left()
 		self.myInfoDisplay.prog = self.myMpc.progname()
 		self.myInfoDisplay.update_display()
+		self.ending = False
 		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
 		self.t.start()
 		self.t.name = 'audiot'
 		print threading.enumerate()		# helps debug
 		self.dt = threading.Timer(DEBUGTIMEOUT, self.debugfunc)
-		self.dt.start()
+#		self.dt.start()
 		self.dt.name = 'debugt'
 		
 	def audiofunc(self):
@@ -69,32 +68,39 @@ class Executive:
 		self.logger.info('Audio timeout')
 		self.myInfoDisplay.writerow(0,'Timeout              ')
 		self.myMpc.stop()
+		self.myInfoDisplay.prog = 'Timeout               '
 		return(0)
 
 	def reset_audio_timer(self):
 		'''Resets the audio timeout Timer. Called by each button push.'''
 		self.t.cancel()
 		time.sleep(1)
-		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
-		self.t.start()
-		self.t.name = 'audiot'
+		if not self.ending:
+			self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
+			self.t.start()
+			self.t.name = 'audiot'
 	
 	def debugfunc(self):
 		'''Implements the actual timeout function.'''
 		print 'Debug info...'
 		print threading.enumerate()
 		self.logger.info('Debug info')
-		self.dt = threading.Timer(DEBUGTIMEOUT, self.debugfunc)
-		self.dt.start()
-		self.dt.name = 'debugt'
+		if not self.ending:
+			self.dt = threading.Timer(DEBUGTIMEOUT, self.debugfunc)
+			self.dt.start()
+			self.dt.name = 'debugt'
 		return(0)
 	
 	def cleanup(self, string):
+		self.ending = True
 		print 'Cleaning up:', string
 		self.myInfoDisplay.t.cancel()	# stop updating the info row
 		self.t.cancel()					# stop the audio timer
+		self.dt.cancel					# stop the debug timer
 		self.myInfoDisplay.clear()
 		self.myInfoDisplay.writerow(0,string)
+		self.myInfoDisplay.writerow(1, self.error_string)
+		self.myInfoDisplay.writerow(2, '                    ')
 		time.sleep(2)
 		self.myInfoDisplay.cleanup()	# needed to stop weather polling.
 		self.myKey.cleanup()
@@ -103,6 +109,7 @@ class Executive:
 		self.myGpio.cleanup()
 		time.sleep(3)
 		print threading.enumerate()		# should just show the main thread
+		self.myInfoDisplay.writerow(2, '                    ')
 		self.logger.warning('Finished exec cleanup')
 		sys.exit(0)
 
@@ -134,6 +141,8 @@ class Executive:
 		self.lasttime = time.time()		# has to be here to avoid long initial delay showing.
 		while True:
 			self.chk_key()				# poll to see if there has been a key pressed
+			if self.myMpc.chk_station_load():
+				self.cleanup('Station load')
 			try:
 				if self.die == True:
 					raise KeyboardInterrupt
@@ -144,6 +153,7 @@ class Executive:
 			except KeyboardInterrupt:
 				self.cleanup('Keyboard interrupt')
 			except:			# all other errors - should never get here
+				print "Unexpected error:", sys.exc_info()[0]
 				self.cleanup('Master loop error')
 
 	def _show_time_taken(self):
@@ -197,10 +207,10 @@ class Executive:
 				return(1)
 			elif button == BUTTONVOLUP:
 				v = self.myMpc.chgvol(+1)
-				self.show_vol_bar(v)
+				self.create_vol_bar(v)
 			elif button == BUTTONVOLDOWN:
 				v = self.myMpc.chgvol(-1)
-				self.show_vol_bar(v)
+				self.create_vol_bar(v)
 #		except:
 #			self.logger.warning('Error in process_button_presses: Value='+str(button))
 #			return(-1)
@@ -234,7 +244,31 @@ class Executive:
 			button = BUTTONVOLDOWN
 #		self.logger.info("processbuttons: "+str(button))
 		return(button)
+	
+	def clear_vol_flag(self):
+		self.myInfoDisplay.chgvol_flag = False
 			
+	def create_vol_bar(self, volume):
+		'''Draw the volume bar on the display.'''
+		self.logger.info('Create vol bar '+str(volume))
+		self.myInfoDisplay.chgvol_flag = True
+		try:
+#			self.myTimeout.setVolumeTimeout()
+#			self.temp_progname = self.programmename
+#			self.programmename = ''
+			self.myInfoDisplay.vol_string = ''
+			for i in range(0, int(volume), 5):		# add a char every 5%
+				self.myInfoDisplay.vol_string += ">"
+			self.myInfoDisplay.vol_string += "      "
+#			self.myInfoDisplay.displayvol(self.programmename)
+			if not self.ending:
+				self.volt = threading.Timer(10, self.clear_vol_flag)	# clear display after 10s
+				self.volt.start()
+				self.volt.name = 'volflag'
+		except:
+			print ' trouble at t mill'
+		return(0)		
+		
 	def _show_vol_bar(self, volume):
 		'''Draw the volume bar on the display.'''
 		self.logger.info('vol bar '+str(volume))
