@@ -46,11 +46,11 @@ class Gpio:
 		elif board == 'slice':
 			self.pins = [17,18,21,22,23,24,25,4]		# slice of pi
 		elif board == 'tft':
-			self.pins = [19,4]							# tft
+			self.pins = [19,4,21,22]		# tft - last 2 entries are not real!!
 		elif board == 'uoled':
 			self.pins = [17,18,21,22]		# not really, just for testing.
 		else:
-			self.logger.info('Error: switch definitions not included.')
+			self.logger.error('Error: switch definitions not included.')
 			print 'Gpio error: board type not defined.'
 			print 'Error: switch definitions not included.'
 			raise InitError(0)		
@@ -84,6 +84,16 @@ class Gpio:
 		GPIO.setup(self.pins[VOLDOWN], GPIO.IN,  pull_up_down=GPIO.PUD_UP)
 		return()
 
+	def _test_edges(self):
+		while True:
+			if self.next == True:
+				print "Got Next edge"
+				self.next = False
+			if self.stop == True:
+				print "Got Stop edge"
+				self.stop = False
+			time.sleep(.2)
+			
 	def pressednext(self,channel):
 		'''Minimally manage the callback that is triggered when the Next button is pressed.'''
 		self.logger.info("Button pressed next, Channel:"+str(channel))
@@ -335,6 +345,7 @@ if __name__ == "__main__":
 	myGpio = Gpio()
 #	myGpio.callback_bounce_test()
 #	myGpio.callback_bounce_no_polling_test()
-	myGpio.scan()
+#	myGpio.scan()
+	myGpio._test_edges()
 #	myGpio.checkforstuckswitches()
 	myGpio.cleanup()

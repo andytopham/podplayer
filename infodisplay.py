@@ -22,7 +22,7 @@ INFOROWUPDATEPERIOD = 60
 
 class InfoDisplay(threading.Thread):
 	'''	Richer info on the oled. '''
-	def __init__(self):
+	def __init__(self, startup):
 		self.logger = logging.getLogger(__name__)
 		threading.Thread.__init__(self, name='infodisplay')
 		self.logger.info("Starting InfoDisplay class")
@@ -38,7 +38,6 @@ class InfoDisplay(threading.Thread):
 		elif keys.board == 'uoled':
 			import uoled
 			self.myScreen = uoled.Screen()
-#			self.myScreen.start()
 		elif keys.board == 'tft':
 			import tft
 			self.myScreen = tft.Screen()

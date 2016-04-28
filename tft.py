@@ -5,6 +5,8 @@
 # https://github.com/adafruit/Adafruit_Python_ILI9341
 # Fonts come from dafont.com, and are stored in a 'binary' subdirectory.
 # Need to send to rpi using binary transfer.
+# Need to install this for the Image libs...
+#   sudo apt-get install python-imaging
 
 import Image
 import ImageDraw
@@ -15,6 +17,7 @@ import Adafruit_ILI9341 as TFT
 #import Adafruit_GPIO.GPIO as GPIO
 import Adafruit_GPIO.SPI as SPI
 import RPi.GPIO as GPIO
+import threading, Queue
 
 # Setup which pins we are using to control the oled
 RST = 23
@@ -22,7 +25,7 @@ DC    = 18
 SPI_PORT = 0
 SPI_DEVICE = 0
 # Using a 5x8 font
-FONT_DIR = '/home/pi/fonts/'
+FONT_DIR = '/home/pi/master/fonts/'
 ROW_HEIGHT = 8
 ROW_LENGTH = 20
 DEFAULT_FONT_SIZE = 24
@@ -39,8 +42,12 @@ YELLOW = (255,255,0)
 BLACK = (0,0,0)
 BLUE = (0,0,255)
 
-class Screen:
+class Screen(threading.Thread):
 	def __init__(self, rowcount = NO_OF_ROWS, rowlength = ROW_LENGTH, rotation = 0):
+		self.Event = threading.Event()
+		self.threadLock = threading.Lock()
+		threading.Thread.__init__(self, name='mytft')
+		self.q = Queue.Queue(maxsize=12)
 		self.rowcount = rowcount
 		self.rowlength = rowlength
 		self.last_prog_row = LAST_PROG_ROW
@@ -67,6 +74,23 @@ class Screen:
 		GPIO.setup(L_BUTTON, GPIO.IN, pull_up_down = GPIO.PUD_UP)
 		GPIO.setup(R_BUTTON, GPIO.IN, pull_up_down = GPIO.PUD_UP)
 		
+	def run(self):
+		print 'Starting tft queue manager.'
+		myevent = False
+		while not myevent:
+			while not self.q.empty():
+				entry = self.q.get()
+				self.writerow(entry[0], entry[1])	
+				self.q.task_done()
+			myevent = self.Event.wait(.5)	# wait for this timeout or the flag being set.
+		print 'Tft exiting'
+		
+	def clear(self):
+#		self.led.clear_display() # This clears the display but only when there is a led.display() as well!
+		time.sleep(.5)
+#		self.led.display()
+		time.sleep(1)		# this really is needed!
+
 	def small_display_update(self, x=0, y=0):
 		# to speed things up, just update a fraction of the display.
 		screen_width = 240

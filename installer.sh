@@ -32,6 +32,13 @@ cd /home/pi/master
 git clone git://github.com/adafruit/Adafruit_Python_ILI9341.git
 cd Adafruit_Python_ILI9341
 python setup.py install
+apt-get -y install python-imaging
+echo 'Fetching fonts'
+cd /home/pi/master
+mkdir fonts
+cd fonts
+curl -sL https://github.com/chrissimpkins/Hack/releases/download/v2.018/Hack-v2_018-ttf.tar.gz | tar xz
+cd /home/pi
 echo 'Configure system files'
 cd /home/pi/master/podplayer
 cp mpd.conf /etc
