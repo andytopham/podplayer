@@ -49,11 +49,13 @@ class Gpio:
 			self.pins = [19,4,21,22]		# tft - last 2 entries are not real!!
 		elif board == 'uoled':
 			self.pins = [17,18,21,22]		# not really, just for testing.
+		elif board == 'emulator':
+			print 'do something here $$$$'
 		else:
 			self.logger.error('Error: switch definitions not included.')
 			print 'Gpio error: board type not defined.'
 			print 'Error: switch definitions not included.'
-			raise InitError(0)		
+			raise InitError(0)
 		self.next = False
 		self.stop = False
 		self.vol = 0
@@ -64,10 +66,10 @@ class Gpio:
 		self.maxelapsed = 0
 		self.button_pressed_time = datetime.datetime.now()
 
-			
+
 	def rpi_rev(self):
 		return(GPIO.RPI_REVISION)
-	
+
 	def setup(self):
 		'''Setup the gpio port.'''
 		self.logger.info("def gpio setup")
@@ -99,7 +101,7 @@ class Gpio:
 		self.logger.info("Button pressed next, Channel:"+str(channel))
 		self.next = True
 		return(0)
-		
+
 	def pressedstop(self,channel):
 		'''Minimally manage the callback that is triggered when the Stop button is pressed.'''
 		self.logger.info("Button pressed stop, Channel:"+str(channel))
@@ -117,9 +119,9 @@ class Gpio:
 		self.logger.info("Button pressed voldown, Channel:"+str(channel))
 		self.vol = -1
 		return(0)
-		
+
 	def setupcallbacks(self):
-		'''Setup gpio lib so that any button press will jump straight to the 
+		'''Setup gpio lib so that any button press will jump straight to the
 		callback processes listed above. This ensures that we get real responsiveness
 		for button presses. Callbacks are run in a parallel process.'''
 		self.logger.info("Using callbacks")
@@ -127,15 +129,15 @@ class Gpio:
 #		BOUNCETIME=20
 		try:
 			GPIO.add_event_detect(self.pins[NEXTSW], GPIO.FALLING, callback=self.pressednext, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(self.pins[STOPSW], GPIO.FALLING, callback=self.pressedstop, bouncetime=BOUNCETIME)	
+			GPIO.add_event_detect(self.pins[STOPSW], GPIO.FALLING, callback=self.pressedstop, bouncetime=BOUNCETIME)
 			GPIO.add_event_detect(self.pins[VOLUP], GPIO.FALLING, callback=self.pressedvolup, bouncetime=BOUNCETIME)
-			GPIO.add_event_detect(self.pins[VOLDOWN], GPIO.FALLING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)	
+			GPIO.add_event_detect(self.pins[VOLDOWN], GPIO.FALLING, callback=self.pressedvoldown, bouncetime=BOUNCETIME)
 		except:
 			self.logger.error('Failed to add edge detection. Must be run as root.')
 			print 'Failed to add edge detection. Must be run as root.'
 			return(1)
 		return(0)
-		
+
 	def checkforstuckswitches(self):
 		'''Check that the gpio switches are not stuck in one state.'''
 		self.logger.debug("def gpio checkforstuckswitches")
@@ -169,7 +171,7 @@ class Gpio:
 				self.logger.error("Stuck stop switch")
 				return(stuck)
 		return(0)
-			
+
 	def isnexthelddown(self,delay):
 		''' Call this after a delay after detecting the next button is pressed.
 			If the button is still pressed, then return 1. '''
@@ -189,7 +191,7 @@ class Gpio:
 			self.reboot = 1
 			return(1)
 		return(0)
-		
+
 	def is_volup_held_down(self,delay):
 		''' Call this after a delay after detecting the volup button is pressed.
 			If the button is still pressed, then return 1. '''
@@ -205,12 +207,12 @@ class Gpio:
 		if GPIO.input(self.pins[VOLDOWN]) == PRESSED:
 			return(True)
 		return(False)
-				
+
 	def cleanup(self):
 		'''Not currently called. Should be called to tidily shutdown the gpio. '''
 		# frees up the ports for another prog to use without warnings.
 		GPIO.cleanup()
-									
+
 	def scan(self):
 		'''Test routine to show current status of each gpio line.'''
 		a = self.pins
@@ -244,11 +246,11 @@ class Gpio:
 			GPIO.setup(a[i], GPIO.IN, pull_up_down=GPIO.PUD_UP)
 			time.sleep(1)		# settling time
 			start = datetime.datetime.now()
-			end = datetime.datetime.now()		
+			end = datetime.datetime.now()
 			print 'Time taken for consecutive reads of datetime.now', end-start
 			start = datetime.datetime.now()
 			GPIO.input(a[0])
-			end = datetime.datetime.now()		
+			end = datetime.datetime.now()
 			print 'Time taken to read gpio input', end-start
 			print 'Testing input '+str(a[i])+', press when ready...'
 			for j in range(3):
@@ -260,10 +262,10 @@ class Gpio:
 					b[k] = GPIO.input(a[i])
 				while GPIO.input(a[i]) == 0:		# wait for switch release
 					pass
-				end = datetime.datetime.now()		
+				end = datetime.datetime.now()
 				print end-start, b
 		return(0)
-		
+
 	def callback_bounce_test(self):
 		'''Print the time between the first two switch bounces.'''
 		a = self.pins
@@ -275,11 +277,11 @@ class Gpio:
 			GPIO.remove_event_detect(a[i])
 			GPIO.add_event_detect(a[i], GPIO.FALLING, callback=self.pushtest, bouncetime=1)
 			start = datetime.datetime.now()
-			end = datetime.datetime.now()		
+			end = datetime.datetime.now()
 			print 'Time taken for consecutive reads of datetime.now:', end-start
 			start = datetime.datetime.now()
 			GPIO.input(a[0])
-			end = datetime.datetime.now()		
+			end = datetime.datetime.now()
 			print 'Time taken to read gpio input:                   ', end-start
 			print 'Testing input '+str(a[i])+', press when ready...'
 			for j in range(MEASUREMENTS):
@@ -289,15 +291,15 @@ class Gpio:
 				start = datetime.datetime.now()		# its been pressed, so start timer
 				for k in range(SAMPLES):
 					b[k] = GPIO.input(a[i])
-				end = datetime.datetime.now()		
+				end = datetime.datetime.now()
 				print end-start, b
 		return(0)
-		
+
 	def pushtest(self, channel):
 		self.pressed = True
 #		print 'Pressed', channel, '\n'
 		return(0)
-		
+
 	def callback_bounce_no_polling_test(self):
 		'''Print the time between the first two switch bounces.'''
 		a = self.pins
@@ -310,11 +312,11 @@ class Gpio:
 #			GPIO.add_event_detect(a[i], GPIO.BOTH, callback=self.fasttest, bouncetime=1)
 			GPIO.add_event_detect(a[i], GPIO.BOTH, callback=self.fasttest)
 			start = datetime.datetime.now()
-			end = datetime.datetime.now()		
+			end = datetime.datetime.now()
 			print 'Time taken for consecutive reads of datetime.now:', end-start
 			start = datetime.datetime.now()
 			GPIO.input(a[0])
-			end = datetime.datetime.now()		
+			end = datetime.datetime.now()
 			print 'Time taken to read gpio input:                   ', end-start
 			print 'Testing input '+str(a[i])+', press when ready...'
 			for j in range(MEASUREMENTS):
@@ -325,16 +327,16 @@ class Gpio:
 				self.pressed = False
 				while self.pressed == True:		# wait for switch press
 					pass
-				end = datetime.datetime.now()		
+				end = datetime.datetime.now()
 				b[j] = end-start
 #				print end-start, b
 			print b
 		return(0)
-		
+
 	def fasttest(self, channel):
 		self.pressed = True
 		return(0)
-				
+
 if __name__ == "__main__":
 	'''Called if this file is called standalone. Then just runs a selftest. '''
 	logging.basicConfig(filename='log/gpio.log',

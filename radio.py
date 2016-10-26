@@ -9,10 +9,10 @@ import time, datetime, argparse, logging
 import executive
 
 # keep path explicit for run on boot
-LOGFILE = '/home/pi/master/podplayer/log/radio.log'	
+LOGFILE = './podplayer/log/radio.log'
 VERSION = '6.2'
 
-''' 
+'''
 Class structure (ignoring library calls)
 radio ->executive	-> gpio 	-> infodisplay	-> tft or oled
 					-> mpc
@@ -42,7 +42,7 @@ def client():
 	# now listen for real commands
 #	time.sleep(2)
 	MySocket.cmdlistener()
-			
+
 def _radio_start(v=0):
 	'''	The main routine for iRadio.'''
 	print "podplayer v", VERSION
@@ -52,12 +52,12 @@ def _radio_start(v=0):
 	myExecutive.startup(v)
 	logging.info("Starting main podplayer loop")
 	myExecutive.master_loop()
-			
+
 if __name__ == "__main__":
 	'''	iradio main routine. Set up logging before calling radiostart.'''
 	parser = argparse.ArgumentParser(
 			description='podplayer - the radio and podcast appliance.')
-	parser.add_argument("-v", "--verbose", 
+	parser.add_argument("-v", "--verbose",
 			help="increase output to log",
 			action="store_true")
 	args = parser.parse_args()
@@ -71,8 +71,8 @@ if __name__ == "__main__":
 		logging.basicConfig(	filename=LOGFILE,
 								filemode='w',
 								level=logging.WARNING )
-	
-#	Default level is warning, level=logging.INFO log lots, 
+
+#	Default level is warning, level=logging.INFO log lots,
 #		level=logging.DEBUG log everything
 	logging.warning('*********************************')
 	logging.warning(datetime.datetime.now().strftime('%d %b %H:%M')
@@ -81,9 +81,7 @@ if __name__ == "__main__":
 		logging.warning("Use -v command line option to increase logging.")
 	else:
 		logging.warning("Logging = verbose.")
-	
+
 	#Constants
 	logging.info("Running radio class as a standalone app")
 	_radio_start(verbose)
-	
-	

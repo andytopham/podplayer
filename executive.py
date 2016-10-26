@@ -3,8 +3,8 @@
 # The main podplayer looping structure.
 
 import time, datetime, logging, subprocess, sys
-import infodisplay, keyboardpoller, gpio
-from mpc2 import Mpc
+# import gpio
+import infodisplay, keyboardpoller, keys
 from system import System
 import threading
 # import timeout
@@ -35,23 +35,33 @@ class Executive:
 		self.chgvol_flag = False
 		self.maxelapsed = 0
 		self.error_string = ''
-		
+
 	def startup(self, verbosity):
 		'''Initialisation for the objects that have variable startup behaviour'''
 		self.myInfoDisplay = infodisplay.InfoDisplay(True)
 		self.myKey = keyboardpoller.KeyboardPoller()
 		self.myKey.start()
-		self.myMpc = Mpc()
 		try:
-			self.myGpio = gpio.Gpio()
+			if keys.board == 'emulator':
+				import gpio_emulator
+				import mpc_emulator
+				self.myGpio = gpio_emulator.Gpio()
+				self.myMpc = mpc_emulator.Mpc()
+				host = 'dummy host'
+				self.programmename = 'dummy prog\nTest\nSecond row'
+			else:
+				from mpc2 import Mpc
+				import gpio
+				self.myGpio = gpio.Gpio()
+				self.myMpc = Mpc()
+				self.mySystem = System()
+				host = self.mySystem.return_hostname()
+				self.programmename = self.myMpc.progname()
+				remaining = self.myMpc.check_time_left()
 		except:
 			self.cleanup('Failed to start gpio')
-		self.mySystem = System()
-		host = self.mySystem.return_hostname()
 		self.myInfoDisplay.writerow(1,host)
-		self.programmename = self.myMpc.progname()
-		remaining = self.myMpc.check_time_left()
-		self.myInfoDisplay.prog = self.myMpc.progname()
+		self.myInfoDisplay.prog = self.programmename
 		self.myInfoDisplay.update_display()
 		self.ending = False
 		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
@@ -61,7 +71,7 @@ class Executive:
 		self.dt = threading.Timer(DEBUGTIMEOUT, self.debugfunc)
 #		self.dt.start()
 		self.dt.name = 'debugt'
-		
+
 	def audiofunc(self):
 		'''Called by the audio timeout Timer. Implements the actual timeout function.'''
 		print 'Timeout'
@@ -79,7 +89,7 @@ class Executive:
 			self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
 			self.t.start()
 			self.t.name = 'audiot'
-	
+
 	def debugfunc(self):
 		'''Implements the actual timeout function.'''
 		print 'Debug info...'
@@ -90,7 +100,7 @@ class Executive:
 			self.dt.start()
 			self.dt.name = 'debugt'
 		return(0)
-	
+
 	def cleanup(self, string):
 		self.ending = True
 		print 'Cleaning up:', string
@@ -135,7 +145,7 @@ class Executive:
 			return(True)
 		else:
 			return(False)
-	
+
 	def master_loop(self):
 		'''Continuously cycle through all the possible events.'''
 		self.lasttime = time.time()		# has to be here to avoid long initial delay showing.
@@ -146,7 +156,7 @@ class Executive:
 			try:
 				if self.die == True:
 					raise KeyboardInterrupt
-				time.sleep(.2)			# keep this inside try so that ctrl-c works here.		
+				time.sleep(.2)			# keep this inside try so that ctrl-c works here.
 				reboot = self.process_button_presses()
 				if reboot == 1:
 					self.cleanup('Reboot')		# need to add to this!
@@ -164,12 +174,12 @@ class Executive:
 			self.maxelapsed = elapsed
 		self.lasttime = now
 		return(0)
-	
+
 	def _show_next_station(self):
 		prog = self.myMpc.next_station()
 		self.myInfoDisplay.show_next_station(prog)
 		return(0)
-		
+
 	def process_button_presses(self):
 		'''Poll for each of the button presses and return the new prog name.'''
 #		try:
@@ -216,7 +226,7 @@ class Executive:
 #			return(-1)
 		button = 0
 		return(0)
-		
+
 	def _processbuttons(self):
 		'''Called by process_button_presses. Expects callback processes to have
 			already set the Next and Stop states.
@@ -226,7 +236,7 @@ class Executive:
 			self.logger.info("Button pressed next")
 			self.myGpio.next = False
 			self.next = False
-			button = BUTTONNEXT			
+			button = BUTTONNEXT
 		if self.myGpio.stop or self.stop:
 			self.logger.info("Button pressed stop")
 			self.myGpio.stop = False
@@ -244,10 +254,10 @@ class Executive:
 			button = BUTTONVOLDOWN
 #		self.logger.info("processbuttons: "+str(button))
 		return(button)
-	
+
 	def clear_vol_flag(self):
 		self.myInfoDisplay.chgvol_flag = False
-			
+
 	def create_vol_bar(self, volume):
 		'''Draw the volume bar on the display.'''
 		self.logger.info('Create vol bar '+str(volume))
@@ -267,8 +277,8 @@ class Executive:
 				self.volt.name = 'volflag'
 		except:
 			print ' trouble at t mill'
-		return(0)		
-		
+		return(0)
+
 	def _show_vol_bar(self, volume):
 		'''Draw the volume bar on the display.'''
 		self.logger.info('vol bar '+str(volume))
@@ -284,11 +294,11 @@ class Executive:
 		except:
 			print ' trouble at t mill'
 		return(0)
-		
+
 	def self_test(self):
 		print 'Self test not yet implemented'
 		return(0)
-		
+
 if __name__ == "__main__":
 	'''Called if this file is called standalone. Then just runs a selftest. '''
 	logging.basicConfig(filename='log/executive.log',

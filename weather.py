@@ -7,7 +7,7 @@ import json
 import logging
 import datetime
 import threading, time
-import keys
+# import keys
 
 class Weather(threading.Thread):
 	def __init__(self, key, locn):
@@ -15,19 +15,24 @@ class Weather(threading.Thread):
 		threading.Thread.__init__(self, name='myweather')
 		self.logger = logging.getLogger(__name__)
 		self.key = key
+		if self.key == 'none':
+			print 'No weather key, emulating.'
 		self.locn = locn
 		self.wunder_temperature = 0
-		
+
 	def run(self):
 		print 'Starting weather thread'
 		myevent = False
 		while not myevent:
-			self.wunder_temperature = self.wunder(self.key, self.locn)
+			if self.key == 'none':
+				self.wunder_temperature = 10
+			else:
+				self.wunder_temperature = self.wunder(self.key, self.locn)
 			print 'Read temp:',self.wunder_temperature
 			time.sleep(6)			# temporary - the max allowed per min by wunder
 			myevent = self.Event.wait(15*60)		# wait for this timeout or the flag being set.
 		print 'Weather exiting.'
-			
+
 	def gettemperature(self,bbckey):
 		self.logger.debug("Fetching bbc temperature")
 		try:
@@ -41,7 +46,7 @@ class Weather(threading.Thread):
 			temperature = 1
 		except:
 			self.logger.error('Unknown error fetching temperature')
-			temperature = 99	
+			temperature = 99
 		try:
 			g = unicode(soup.item.description)
 			found = re.search(": [0-9]*.*C",g)
@@ -65,7 +70,7 @@ class Weather(threading.Thread):
 		self.logger.info("Current temperature is: %s" % (temp_c))
 		f.close()
 		return(str(temp_c))
-		
+
 if __name__ == "__main__":
 	logging.basicConfig(filename='log/weather.log', filemode='w', level=logging.WARNING)	#filemode means that we do not append anymore
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
@@ -88,4 +93,3 @@ if __name__ == "__main__":
 	print threading.enumerate()
 	print 'Ending main.'
 #	myWeather.wunder()
-	
