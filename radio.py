@@ -9,7 +9,7 @@ import time, datetime, argparse, logging
 import executive
 
 # keep path explicit for run on boot
-LOGFILE = './podplayer/log/radio.log'
+LOGFILE = './log/radio.log'
 VERSION = '6.2'
 
 '''

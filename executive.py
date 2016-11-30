@@ -128,18 +128,23 @@ class Executive:
 		if self.myKey.command:
 			self.myKey.command = False
 			if self.myKey.exit:
+				print 'Exit key'
 				self.die = True
 				self.myKey.exit = False
 			if self.myKey.next:
+				print 'Next key'
 				self.myKey.next = False
 				self.next = True
 			if self.myKey.stop:
+				print 'Stop key'
 				self.myKey.stop = False
 				self.stop = True
 			if self.myKey.volup:
+				print 'Volup key'
 				self.myKey.volup = False
 				self.volup = True
 			if self.myKey.voldown:
+				print 'Voldown key'
 				self.myKey.voldown = False
 				self.voldown = True
 			return(True)

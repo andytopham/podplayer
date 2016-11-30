@@ -4,9 +4,10 @@
 import os, time, datetime
 import pygame
 from pygame.locals import *
-import threading, Queue
+import Queue
+import multiprocessing
 
-TIMEOUT = 20	# seconds
+TIMEOUT = 10	# seconds
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
@@ -18,12 +19,13 @@ BLACK = (0, 0, 0)
 ROWHEIGHT = 20
 ROWCOUNT = 4
 
-class Display(threading.Thread):
+class Display(multiprocessing.Process):
 
 	def __init__(self):
-		self.Event = threading.Event()
-		threading.Thread.__init__(self, name='myemulator')
-		self.q = Queue.Queue(maxsize=6)
+#		self.Event = threading.Event()
+#		multiprocessing.freeze_support()
+		multiprocessing.Process.__init__(self, name='myprocess')
+		self.q = multiprocessing.Queue(maxsize=6)
 		x = 20
 		y = 300
 		os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (x,y)
@@ -50,8 +52,8 @@ class Display(threading.Thread):
 				entry = self.q.get()
 				self.writerow(entry[0], entry[1])
 				self.q.task_done()
-			myevent = self.Event.wait(.5)	# wait for this timeout or the flag being set.
-			self.master_checks()
+#			myevent = self.Event.wait(.5)	# wait for this timeout or the flag being set.
+#			self.master_checks()
 		self.cleanup()
 
 	def buttons(self):
@@ -73,6 +75,7 @@ class Display(threading.Thread):
 		text = font.render('Quit', 1, BLACK)
 		self.background.blit(text, (140,ytop+5))
 		self.screen.blit(self.background, (0, 0))
+		self.display()
 
 	def writerow(self, rownumber, string):
 		if rownumber > ROWCOUNT-1:
@@ -112,7 +115,7 @@ class Display(threading.Thread):
 				print 'vol- button click'
 			if mousex > 140 and mousex < 160:
 				print 'quit button click'
-				self.Event.set()
+#				self.Event.set()
 				return(False)
 			return(True)
 		else:
@@ -148,7 +151,13 @@ class Display(threading.Thread):
 				runner = self._chk_for_quit()
 			if self.button == 'Next':
 				myEmulator.q.put([0, 'Next button'])
+			while not self.q.empty():
+				entry = self.q.get()
+				self.writerow(entry[0], entry[1])
+#				self.q.task_done()
 		print 'Exiting master loop'
+		time.sleep(1)
+		self.cleanup()
 
 	def _chk_for_quit(self):
 		for event in pygame.event.get():
@@ -176,13 +185,14 @@ class Display(threading.Thread):
 if __name__ == "__main__":
 	print 'Emulator test'
 	myEmulator = Display()
-	myEmulator.start()
-	print threading.enumerate()
+#	myEmulator.start()
+#	print threading.enumerate()
+	myEmulator.q.put([0, 'Emulator test'])
+	myEmulator.master_loop()
 	time.sleep(2)
 	myEmulator.q.put([0, 'Emulator test'])
 	time.sleep(2)
 	myEmulator.q.put([1, 'Second row. This is a very long row.'])
-	myEmulator.master_loop()
 
 #	myEmulator.test()
 #	myEmulator.buttons()

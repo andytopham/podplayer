@@ -58,7 +58,7 @@ class InfoDisplay(threading.Thread):
 		self.myScreen.start()
 		self.rowcount, self.rowlength = self.myScreen.info()
 		self.writerow(TITLE_ROW, 'Starting up...'.center(self.rowlength))
-		self.update_info_row()
+#		self.update_info_row()
 		self.lasttime = 0
 		self.delta = 0.001
 		self.scroll_pointer = SCROLL_PAUSE
@@ -70,8 +70,14 @@ class InfoDisplay(threading.Thread):
 			self.timer = INFOROWUPDATEPERIOD
 
 	def cleanup(self):
-		self.ending = True					# must be first line.
-		self.t.cancel()						# cancel timer for update display
+		self.ending = True	# must be first line.
+		time.sleep(1)		# these delays needed to get cleanup to work
+		if self.rowcount == 2:
+			self.scrollt.cancel()
+			time.sleep(1)
+			self.scrollt.cancel()
+		else:
+			self.t.cancel()						# cancel timer for update display
 		self.myWeather.Event.set()			# send the stop signal
 		self.myScreen.Event.set()
 		time.sleep(2)
@@ -87,15 +93,18 @@ class InfoDisplay(threading.Thread):
 
 	def update_display(self):
 		'''Update the whole display, including the prog info and the status line.'''
-		self.update_info_row()
-		self.show_prog_info(self.prog)
+		self._update_info_row()
+		if self.rowcount == 2:
+			self._scroll(self.prog)
+		else:
+			self._show_prog_info(self.prog)
 		if not self.ending:
 			self.t = threading.Timer(self.timer, self.update_display)
 			self.t.start()
 			self.t.name = 'displayupdate'
 		return(0)
 
-	def update_info_row(self):
+	def _update_info_row(self):
 		'''Time and temperature display on the info line = bottom row.
 			This now repeats itself courtesy of the Timer.'''
 		clock = time.strftime("%H:%M")
@@ -106,7 +115,7 @@ class InfoDisplay(threading.Thread):
 		self.myScreen.write_button_labels(False, False)
 		return(0)
 
-	def show_prog_info(self,string):
+	def _show_prog_info(self,string):
 		'''Display up to 2 rows from bottom of display of the program name and details.'''
 		retstr, string = self._find_station_name(string)
 		if retstr:						# if the station is recognised.
@@ -159,18 +168,19 @@ class InfoDisplay(threading.Thread):
 			self.lasttime = elapsed
 		return(0)
 
-	def scroll(self):
-		if len(self.scroll_string) > 10:
-			row = 2
+	def _scroll(self, string):
+		self._update_info_row()
+		if len(string) > 10:
+			row = 0	# used to be 2
 			if self.scroll_pointer < 0:
-				self.myScreen.q.put([row, self.scroll_string[0:self.rowlength]])
+				self.myScreen.q.put([row, string[0:self.rowlength]])
 			else:
-				self.myScreen.q.put([row, self.scroll_string[self.scroll_pointer:self.scroll_pointer+self.rowlength]])
+				self.myScreen.q.put([row, string[self.scroll_pointer:self.scroll_pointer+self.rowlength]])
 			self.scroll_pointer += 1
-			if  self.scroll_pointer > (len(self.scroll_string)-15):
+			if  self.scroll_pointer > (len(string)-15):
 				self.scroll_pointer = SCROLL_PAUSE
 		if not self.ending:
-			self.scrollt = threading.Timer(.5, self.scroll)
+			self.scrollt = threading.Timer(.5, self._scroll, [self.prog])
 			self.scrollt.start()
 			self.scrollt.name = 'scroll'
 		return(0)
@@ -182,7 +192,7 @@ class InfoDisplay(threading.Thread):
 		return(0)
 
 if __name__ == "__main__":
-	logging.basicConfig(filename='./podplayer/log/infodisplay.log',
+	logging.basicConfig(filename='./log/infodisplay.log',
 						filemode='w',
 						level=logging.INFO)	#filemode means that we do not append anymore
 #	Default level is warning, level=logging.INFO log lots, level=logging.DEBUG log everything
@@ -190,16 +200,17 @@ if __name__ == "__main__":
 
 	print 'Infodisplay test'
 	myID = InfoDisplay(testmode = True)
-	myID.update_display()
+#	myID.update_display()
+	myID._scroll(myID.prog)
 	print 'Timer running'
-	string = ['String zero.',
-		'String1. Lets put a lot of text here so that it wraps and in fact need plenty to test scroll.',
+	string = ['String zero. Here is some text that is long enough to scroll.',
+		'String1. Lets put a lot of text here so that it wraps and need plenty to test scroll.',
 		'Strings 2.',
 		'Final string']
 	for i in range(2):
 		print 'String ',i
 		myID.prog = string[i]
-		time.sleep(5)
+		time.sleep(20)
 	print 'cleaning up'
 	myID.cleanup()
 	print threading.enumerate()
