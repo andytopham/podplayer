@@ -22,7 +22,7 @@ INFOROWUPDATEPERIOD = 60
 
 class InfoDisplay(threading.Thread):
 	'''	Richer info on the oled. '''
-	def __init__(self, testmode = False):
+	def __init__(self, testmode = False, scrolling = False):
 		self.logger = logging.getLogger(__name__)
 		threading.Thread.__init__(self, name='infodisplay')
 		self.logger.info("Starting InfoDisplay class")
@@ -68,14 +68,16 @@ class InfoDisplay(threading.Thread):
 			self.timer = 2
 		else:
 			self.timer = INFOROWUPDATEPERIOD
+		self.scrolling = scrolling
 
 	def cleanup(self):
 		self.ending = True	# must be first line.
 		time.sleep(1)		# these delays needed to get cleanup to work
 		if self.rowcount == 2:
-			self.scrollt.cancel()
-			time.sleep(1)
-			self.scrollt.cancel()
+			if self.scrolling:
+				self.scrollt.cancel()
+				time.sleep(1)
+				self.scrollt.cancel()
 		else:
 			self.t.cancel()						# cancel timer for update display
 		self.myWeather.Event.set()			# send the stop signal
@@ -95,7 +97,10 @@ class InfoDisplay(threading.Thread):
 		'''Update the whole display, including the prog info and the status line.'''
 		self._update_info_row()
 		if self.rowcount == 2:
-			self._scroll(self.prog)
+			if self.scrolling:
+				self._scroll(self.prog)
+			else:
+				self.myScreen.q.put([TITLE_ROW,self.prog])		# just show one row
 		else:
 			self._show_prog_info(self.prog)
 		if not self.ending:

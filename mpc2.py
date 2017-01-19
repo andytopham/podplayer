@@ -1,7 +1,7 @@
 #!/usr/bin/python
 '''Module to control mpd using the native python library python-mpd2.'''
-# Todo:
-# Put fetching prog name into a  timer or thread.
+# Installation instructions for hifiberry....
+# https://support.hifiberry.com/hc/en-us/articles/205377651-Configuring-Linux-4-x-or-higher
 
 import time, datetime, logging, subprocess, requests, os
 from bs4 import BeautifulSoup
@@ -213,9 +213,9 @@ class Mpc:
 		
 	def play(self):
 		"""Send the play signal to mpc."""
-#		self.logger.info("Play: setting play.")
+		self.logger.info("Play: setting play.")
 		if self.podmode == False:
-#			self.logger.info("Selected station: "+str(self.station))
+			self.logger.info("Selected station: "+str(self.station))
 			try:
 				self.client.play(self.station)
 			except mpd.ConnectionError:
@@ -230,7 +230,7 @@ class Mpc:
 			except:
 				self.logger.error("Failed to set play for radio station.")
 				raise
-		else:
+		else:		# pod mode
 			self.logger.info("Selected pod: "+str(self.podnumber))
 			try:
 				self.client.play(self.podnumber)
@@ -357,9 +357,11 @@ class Mpc:
 			self.station = self.station + 1
 			if self.station > self.myBBC.stationcounter()-1:
 				self.station = 0
-			x= str(self.station)
-			self.logger.info("Next: moving to station "+x)
-			self.client.play(self.station)
+			self.logger.info("Next: moving to station "+str(self.station))
+			try:
+				self.client.play(self.station)
+			except mpd.ConnectionError:
+				self.logger.warning('Next: mpd connection error.')
 			return(self.station)
 
 	def progname(self):

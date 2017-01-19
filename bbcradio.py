@@ -257,7 +257,8 @@ class BBCradio(threading.Thread):
 			self.logger.info("BBCstationname: Finished BBC radio program names.")
 
 if __name__ == "__main__":
-	print "Running bbcradio class as a standalone app"
+	print "Running bbcradio class as a standalone app."
+	print "When this has finished, look at the log file."
 	logging.basicConfig(filename='log/bbcradio.log',
 						filemode='w',
 						level=logging.INFO)	#filemode means that we do not append anymore

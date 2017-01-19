@@ -157,6 +157,7 @@ class Executive:
 		while True:
 			self.chk_key()				# poll to see if there has been a key pressed
 			if self.myMpc.chk_station_load():
+				self.logger.warning('Going to cleanup')
 				self.cleanup('Station load')
 			try:
 				if self.die == True:
@@ -199,9 +200,7 @@ class Executive:
 				self.myInfoDisplay.writelabels(True)
 				if self.myMpc.next() == -1:
 					return('No pods left!')
-				prog = self.myMpc.progname()
-				self.myInfoDisplay.show_prog_info(prog)
-				self.myInfoDisplay.prog = prog	# displayed by background task
+				self.myInfoDisplay.prog = self.myMpc.progname()	# displayed by background task
 			elif button == BUTTONSTOP:
 				self.myInfoDisplay.writelabels(False, True)
 				self.myMpc.toggle()
