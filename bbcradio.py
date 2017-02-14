@@ -126,7 +126,6 @@ class BBCradio(threading.Thread):
 				file2 = source.readline()
 				lines.append(file1)		# or, we could choose file1 - don't know difference
 				source.close()
-#				print lines				
 			except:
 				logging.warning("Could not open: "+i[self.URLSTREAM])
 				return(-1)
@@ -226,10 +225,8 @@ class BBCradio(threading.Thread):
 	
 	def stationname(self):
 		"""Fetch the names of all the BBC programmes."""
-#		print 'Start: ',datetime.datetime.now().strftime('%d %b %H:%M')
 		self.logger.info("Stationname: Fetching BBC radio program names.")
 		self.debug()
-#		print 'Fetching BBC names'
 		for station in range(4):
 			row = self.urls[station]
 			address = row[self.URLDETAILS]
@@ -244,7 +241,6 @@ class BBCradio(threading.Thread):
 				except:
 					programmename = "Unpronounceable"
 			self.logger.info("Program name:"+programmename)
-#			print programmename
 			self.bbcname[station] = programmename
 		if self.ending:
 			self.logger.info('BBCstationname ending.')
