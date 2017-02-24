@@ -341,6 +341,31 @@ class Mpc:
 		self.client.previous()
 		return(0)
 		
+	def prev(self):
+		"""Tell mpc to play the prev item."""
+		self.podmode = False
+		if self.podmode:
+			self.deleteFile()			# get rid of the one just moved from
+			self.podnumber += 1
+			self.logger.info("Next podcast: moving to "+str(self.podnumber)+" out of "+str(self.podcount))
+			if self.podnumber > self.podcount-1:
+				self.podnumber = 0
+				return(-1)				# finished pods
+			self.client.play(self.podnumber)
+			return(self.podnumber)
+		else:						# its radio mode
+			self.station = self.station - 1
+			if self.station < 0:
+				self.station = self.myBBC.stationcounter() - 1
+			self.logger.info("Prev: moving to station "+str(self.station))
+			try:
+				self.client.play(self.station)		# note this is NOT my play routine
+			except mpd.ConnectionError:
+				self.logger.warning('Prev: mpd connection error.')
+			except:
+				self.logger.warning('Unexpected error trying to play prev station')
+			return(self.station)
+
 	def next(self):
 		"""Tell mpc to play the next item."""
 		self.podmode = False
@@ -359,12 +384,17 @@ class Mpc:
 				self.station = 0
 			self.logger.info("Next: moving to station "+str(self.station))
 			try:
-				self.client.play(self.station)
+#				print 'Playlist:',self.client.playlist()
+				self.client.play(self.station)		# note this is NOT my play routine
+#				self.logger.info('Set play of next track')
 			except mpd.ConnectionError:
 				self.logger.warning('Next: mpd connection error.')
+			except:
+				self.logger.warning('Unexpected error trying to play next station')
 			return(self.station)
 
 	def progname(self):
+		self.logger.info('Getting prog name')
 		if self.playState == self.STOPPED:
 			return(self.STOPPEDPROGNAME)
 		else:

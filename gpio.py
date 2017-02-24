@@ -41,6 +41,8 @@ class Gpio:
 		board = keys.board
 		if board == 'oled4':
 			self.pins = [17,22,25,4,18,24]
+		elif board == 'lcd':
+			self.pins = [12,16,7,6]			# just made up with free pins
 		elif board == 'oled2':
 			self.pins = [17,18,21,22,25,24]
 		elif board == 'slice':

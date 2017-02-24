@@ -5,17 +5,34 @@
 # https://learn.adafruit.com/character-lcd-with-raspberry-pi-or-beaglebone-black/overview
 
 import Adafruit_CharLCD as LCD
+import threading, Queue
 
-class Screen:
+class Screen(threading.Thread):
 	def __init__(self, rows = 2):
-		self.lcd = LCD.Adafruit_CharLCD(27, 22, 25, 24, 23, 5, 16, 2, 21)   
-		self.lcd.message('LCD initialised')
+		self.Event = threading.Event()
+		threading.Thread.__init__(self, name='mylcd')
+		self.q = Queue.Queue(maxsize=6)
 		self.rowcount = rows
 		if rows == 2:
 			self.rowlength = 16
+			self.last_prog_row = 0
 		else:
 			self.rowlength = 20
-
+			self.last_prog_row = 2
+		self.lcd = LCD.Adafruit_CharLCD(27, 22, 25, 24, 23, 5, 16, 2, 21)   
+		self.writerow(0, 'LCD initialised')
+			
+	def run(self):
+		print 'Starting lcd queue manager.'
+		myevent = False
+		while not myevent:
+			while not self.q.empty():
+				entry = self.q.get()
+				self.writerow(entry[0], entry[1])	
+				self.q.task_done()
+			myevent = self.Event.wait(.5)	# wait for this timeout or the flag being set.
+		print 'Lcd exiting'
+		
 	def info(self):
 		return(self.rowcount, self.rowlength)
 

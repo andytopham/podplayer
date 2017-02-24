@@ -32,6 +32,9 @@ class InfoDisplay(threading.Thread):
 		if keys.board == 'oled4':
 			import oled
 			self.myScreen = oled.Screen(4)
+		elif keys.board == 'lcd':
+			import lcd
+			self.myScreen = lcd.Screen()
 		elif keys.board == 'oled2':
 			import oled
 			self.myScreen = oled.Screen(2)
@@ -69,17 +72,21 @@ class InfoDisplay(threading.Thread):
 		else:
 			self.timer = INFOROWUPDATEPERIOD
 		self.scrolling = scrolling
-
+		self.told = time.clock()
+		
 	def cleanup(self):
 		self.ending = True	# must be first line.
 		time.sleep(1)		# these delays needed to get cleanup to work
-		if self.rowcount == 2:
-			if self.scrolling:
-				self.scrollt.cancel()
-				time.sleep(1)
-				self.scrollt.cancel()
-		else:
-			self.t.cancel()						# cancel timer for update display
+		try:
+			if self.rowcount == 2:
+				if self.scrolling:
+					self.scrollt.cancel()
+					time.sleep(1)
+					self.scrollt.cancel()
+			else:
+				self.t.cancel()						# cancel timer for update display
+		except:
+			print 'Scroll timer not started'
 		self.myWeather.Event.set()			# send the stop signal
 		self.myScreen.Event.set()
 		time.sleep(2)
@@ -100,10 +107,11 @@ class InfoDisplay(threading.Thread):
 			if self.scrolling:
 				self._scroll(self.prog)
 			else:
-				self.myScreen.q.put([TITLE_ROW,self.prog])		# just show one row
+				self.myScreen.q.put([TITLE_ROW,self.prog[:self.rowlength]])		# just show one row
 		else:
 			self._show_prog_info(self.prog)
 		if not self.ending:
+			print 'refreshing display update with timer = ',self.timer
 			self.t = threading.Timer(self.timer, self.update_display)
 			self.t.start()
 			self.t.name = 'displayupdate'
@@ -173,21 +181,25 @@ class InfoDisplay(threading.Thread):
 			self.lasttime = elapsed
 		return(0)
 
-	def _scroll(self, string):
-		self._update_info_row()
-		if len(string) > 10:
+	def _scroll(self):
+		self.told = time.clock()
+#		self._update_info_row()
+		if len(self.prog) > 10:
 			row = 0	# used to be 2
 			if self.scroll_pointer < 0:
-				self.myScreen.q.put([row, string[0:self.rowlength]])
+				self.myScreen.q.put([row, self.prog[0:self.rowlength]])
 			else:
-				self.myScreen.q.put([row, string[self.scroll_pointer:self.scroll_pointer+self.rowlength]])
+				self.myScreen.q.put([row, self.prog[self.scroll_pointer:self.scroll_pointer+self.rowlength]])
 			self.scroll_pointer += 1
-			if  self.scroll_pointer > (len(string)-15):
+			if  self.scroll_pointer > (len(self.prog)-15):
 				self.scroll_pointer = SCROLL_PAUSE
 		if not self.ending:
-			self.scrollt = threading.Timer(.5, self._scroll, [self.prog])
+			self.scrollt = threading.Timer(.5, self._scroll)
 			self.scrollt.start()
 			self.scrollt.name = 'scroll'
+		self.tstart = time.clock()
+		print 'Scroll time:',self.tstart - self.told
+		self.told = self.tstart
 		return(0)
 
 	def writelabels(self, next = False, stop = False):
@@ -206,7 +218,7 @@ if __name__ == "__main__":
 	print 'Infodisplay test'
 	myID = InfoDisplay(testmode = True)
 #	myID.update_display()
-	myID._scroll(myID.prog)
+	myID._scroll()
 	print 'Timer running'
 	string = ['String zero. Here is some text that is long enough to scroll.',
 		'String1. Lets put a lot of text here so that it wraps and need plenty to test scroll.',

@@ -8,9 +8,11 @@ import infodisplay, keyboardpoller, keys
 from system import System
 import threading
 # import timeout
+import rotary
 
 BUTTONNONE = 0
 BUTTONNEXT = 1
+BUTTONPREV = 8
 BUTTONSTOP = 2
 BUTTONVOLUP = 3
 BUTTONVOLDOWN = 4
@@ -38,7 +40,7 @@ class Executive:
 
 	def startup(self, verbosity):
 		'''Initialisation for the objects that have variable startup behaviour'''
-		self.myInfoDisplay = infodisplay.InfoDisplay(True)
+		self.myInfoDisplay = infodisplay.InfoDisplay()
 		self.myKey = keyboardpoller.KeyboardPoller()
 		self.myKey.start()
 		try:
@@ -60,6 +62,8 @@ class Executive:
 				remaining = self.myMpc.check_time_left()
 		except:
 			self.cleanup('Failed to start gpio')
+		if keys.board == 'lcd':					 # rotary encoder
+			self.myRotary = rotary.Rotary()		# set the interrupts up
 		self.myInfoDisplay.writerow(1,host)
 		self.myInfoDisplay.prog = self.programmename
 		self.myInfoDisplay.update_display()
@@ -169,7 +173,8 @@ class Executive:
 			except KeyboardInterrupt:
 				self.cleanup('Keyboard interrupt')
 			except:			# all other errors - should never get here
-				print "Unexpected error:", sys.exc_info()[0]
+#				print "Unexpected error:", sys.exc_info()[0]
+				print "Unexpected error:", sys.exc_info()
 				self.cleanup('Master loop error')
 
 	def _show_time_taken(self):
@@ -186,10 +191,26 @@ class Executive:
 		self.myInfoDisplay.show_next_station(prog)
 		return(0)
 
+	def get_rotary_value(self):
+		self.myRotary.LockRotary.acquire()               # get lock for rotary switch
+		NewCounter = self.myRotary.Rotary_counter         # get counter value
+		self.myRotary.Rotary_counter = 0                  # RESET IT TO 0
+		self.myRotary.LockRotary.release()               # and release lock
+		if (NewCounter > 0):               # Counter has CHANGED
+			return(BUTTONNEXT)
+		if (NewCounter < 0):               # Counter has CHANGED
+			return(BUTTONPREV)
+		return(0)
+#			Volume = Volume + NewCounter*abs(NewCounter)   # Decrease or increase volume 
+
+	
 	def process_button_presses(self):
 		'''Poll for each of the button presses and return the new prog name.'''
 #		try:
-		button = self._processbuttons()
+		if keys.board == 'lcd':						# this has the rotary encoder
+			button = self.get_rotary_value()
+		else:										# push buttons
+			button = self._processbuttons()
 		if button == 0:
 			return(0)
 		else:
@@ -197,12 +218,16 @@ class Executive:
 			if button == BUTTONMODE:
 				self.myMpc.switchmode()
 			elif button == BUTTONNEXT:
-				self.myInfoDisplay.writelabels(True)
 				if self.myMpc.next() == -1:
 					return('No pods left!')
 				self.myInfoDisplay.prog = self.myMpc.progname()	# displayed by background task
+				self.myInfoDisplay.update_display()
+			elif button == BUTTONPREV:
+				if self.myMpc.prev() == -1:
+					return('No pods left!')
+				self.myInfoDisplay.prog = self.myMpc.progname()	# displayed by background task
+				self.myInfoDisplay.update_display()
 			elif button == BUTTONSTOP:
-				self.myInfoDisplay.writelabels(False, True)
 				self.myMpc.toggle()
 				self.myInfoDisplay.show_prog_info(self.myMpc.progname())
 			elif button == BUTTONREBOOT:
