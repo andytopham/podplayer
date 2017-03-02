@@ -25,11 +25,13 @@ class Rotary():
 		GPIO.setup(Sw, GPIO.IN, GPIO.PUD_UP)
 		GPIO.add_event_detect(Enc_A, GPIO.RISING, callback=self.rotary_interrupt)             # NO bouncetime 
 		GPIO.add_event_detect(Enc_B, GPIO.RISING, callback=self.rotary_interrupt)             # NO bouncetime 
-		GPIO.add_event_detect(Sw, GPIO.FALLING, callback=self.switch_interrupt)             # NO bouncetime
+		GPIO.add_event_detect(Sw, GPIO.FALLING, callback=self.switch_interrupt)
+		self.switch = False
 		return
 
 	def switch_interrupt(self, junk):
-		print "Switch"
+		print "Rotary switch"
+		self.switch = True
 		return
 		
 	def rotary_interrupt(self, A_or_B):

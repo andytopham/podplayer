@@ -18,7 +18,7 @@ BLACK = (0, 0, 0)
 ROWHEIGHT = 20
 ROWCOUNT = 4
 
-class Display(threading.Thread):
+class Screen(threading.Thread):
 
 	def __init__(self):
 		self.Event = threading.Event()
@@ -175,7 +175,7 @@ class Display(threading.Thread):
 
 if __name__ == "__main__":
 	print 'Emulator test'
-	myEmulator = Display()
+	myEmulator = Screen()
 	myEmulator.start()
 	print threading.enumerate()
 	time.sleep(2)

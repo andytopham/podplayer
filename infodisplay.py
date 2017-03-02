@@ -3,6 +3,7 @@
 import subprocess, time, logging, datetime, sys, threading
 from weather import Weather
 import keys
+import importlib
 
 # ToDo: Add scrolling, based on overflow from row0.
 #   Put this into a Timer.
@@ -29,32 +30,13 @@ class InfoDisplay(threading.Thread):
 		self.chgvol_flag = False
 		self.vol_string = ' '
 		print 'Infodisplay board = ',keys.board
-		if keys.board == 'oled4':
-			import oled
-			self.myScreen = oled.Screen(4)
-		elif keys.board == 'lcd':
-			import lcd
-			self.myScreen = lcd.Screen()
-		elif keys.board == 'oled2':
-			import oled
-			self.myScreen = oled.Screen(2)
-		elif keys.board == 'uoled':
-			import uoled
-			self.myScreen = uoled.Screen()
-		elif keys.board == 'tft':
-			import tft
-			self.myScreen = tft.Screen()
-		elif keys.board == 'emulator':
-			print 'Display emulator'
-			import emulator
-			self.myScreen = emulator.Display()
-			self.myScreen.buttons()
-			self.myScreen.test()
-			self.myScreen.display()
-		else:
-			print 'No display specified in keys file. Exiting.'
-			self.logger.error('No display specified in keys file. Exiting.')
-			sys.exit()
+		if keys.board not in ['oled4', 'oled2', 'lcd', 'uoled', 'tft', 'emulator']:
+			print 'Error: display type not recognised.'
+			sys.exit()			
+		board = importlib.import_module(keys.board)
+		self.myScreen = board.Screen()
+		if keys.board == 'oled2':
+			self.myScreen.set_rowcount(2)
 		self.myWeather = Weather(keys.key, keys.locn)
 		self.myWeather.start()
 		self.ending = False

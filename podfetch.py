@@ -54,6 +54,7 @@ class podfetch:
 				string = label + ": " + i.title
 				print string
 				logging.info(string)
+				# replace this next line with the native python wget???
 				p = subprocess.call(["wget", "-q", "-nc", "-P", self.destinationdir, i.link])
 		return(0)
 

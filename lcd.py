@@ -30,7 +30,7 @@ class Screen(threading.Thread):
 				entry = self.q.get()
 				self.writerow(entry[0], entry[1])	
 				self.q.task_done()
-			myevent = self.Event.wait(.5)	# wait for this timeout or the flag being set.
+			myevent = self.Event.wait(.2)	# wait for this timeout or the flag being set.
 		print 'Lcd exiting'
 		
 	def info(self):

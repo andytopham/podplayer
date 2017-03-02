@@ -28,14 +28,8 @@ class Screen(threading.Thread):
 #		self.threadLock = threading.Lock()
 		threading.Thread.__init__(self, name='myoled')
 		self.q = Queue.Queue(maxsize=6)
-		self.rowcount = rows
-		if rows == 4:
-			self.rowlength = ROWLENGTH4
-			self.last_prog_row = LAST_PROG_ROW4
-		else:
-			self.rowlength = ROWLENGTH2
-			self.last_prog_row = LAST_PROG_ROW2
 		self.logger = logging.getLogger(__name__)
+		self.set_rowcount(rows)
 		self.port = serial.Serial(
 			port='/dev/ttyAMA0', 
 			baudrate=2400, 
@@ -47,6 +41,16 @@ class Screen(threading.Thread):
 		self.startpt=0
 		self.initialise()
 
+	def set_rowcount(self, rows):
+		self.rowcount = rows
+		if rows == 4:
+			self.rowlength = ROWLENGTH4
+			self.last_prog_row = LAST_PROG_ROW4
+		else:
+			self.rowlength = ROWLENGTH2
+			self.last_prog_row = LAST_PROG_ROW2
+		
+	
 	def run(self):
 		print 'Starting oled queue manager.'
 		myevent = False

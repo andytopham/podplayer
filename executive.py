@@ -159,6 +159,7 @@ class Executive:
 		'''Continuously cycle through all the possible events.'''
 		self.lasttime = time.time()		# has to be here to avoid long initial delay showing.
 		while True:
+			time.sleep(.2)
 			self.chk_key()				# poll to see if there has been a key pressed
 			if self.myMpc.chk_station_load():
 				self.logger.warning('Going to cleanup')
@@ -201,13 +202,15 @@ class Executive:
 		if (NewCounter < 0):               # Counter has CHANGED
 			return(BUTTONPREV)
 		return(0)
-#			Volume = Volume + NewCounter*abs(NewCounter)   # Decrease or increase volume 
 
 	
 	def process_button_presses(self):
 		'''Poll for each of the button presses and return the new prog name.'''
 #		try:
 		if keys.board == 'lcd':						# this has the rotary encoder
+			if self.myRotary.switch == True:
+				button = BUTTONHALT
+				return(1)
 			button = self.get_rotary_value()
 		else:										# push buttons
 			button = self._processbuttons()
