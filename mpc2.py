@@ -21,12 +21,12 @@ class Mpc:
 	VOLSTEP = 5
 	STOPPEDPROGNAME = "  Stopped              "
 	
-	def __init__(self, test_mode = False):
+	def __init__(self, test_mode = False, podmode = False):
 		self.logger = logging.getLogger(__name__)
 		self.playState = self.STOPPED		# playing or stopped
 		self.station = 0					# station number
 		self.podnumber = 0
-		self.podmode = False 
+		self.podmode = podmode
 		self.podcount = 0
 		self.stale_links = 0
 		self. logger.info('Starting mpd client.')
@@ -36,17 +36,24 @@ class Mpc:
 		self.client.connect("localhost", 6600)
 		self.client.clear()
 		self.logger.info("python-mpd2 version:"+self.client.mpd_version)
-		if test_mode:
-			self.myBBC = BBCradio(self.client, 5)
-		else:		# normal mode
-			self.myBBC = BBCradio(self.client)
-		self.myBBC.start()
-		self.myBBC.stationname()		# this starts the perpetual loop collecting the names!
+		if self.podmode:
+			self.load_pods()
+		else:
+			if test_mode:
+				self.myBBC = BBCradio(self.client, 5)
+			else:		# normal mode
+				self.myBBC = BBCradio(self.client)
+			self.myBBC.start()
+			self.myBBC.stationname()		# this starts the perpetual loop collecting the names!
 		self.updatedb()						# just run this occasionally
 		self.setvol(40)
 		self.station = 0
-		while self.myBBC.stationcount == 0:	# wait for the first station to be ready
-			time.sleep(1)
+		if self.podmode:
+			while self.podcounter() == 0:	# wait for the first station to be ready
+				time.sleep(1)
+		else:
+			while self.myBBC.stationcount == 0:	# wait for the first station to be ready
+					time.sleep(1)
 		self.play()
 
 	def _start_mpd(self):
@@ -66,7 +73,8 @@ class Mpc:
 		
 	def cleanup(self):
 		self.stop()
-		self.myBBC.cleanup()
+		if not self.podmode:
+			self.myBBC.cleanup()
 		
 	def next_station(self):
 		no_of_stations = self.myBBC.stationcounter()
@@ -134,35 +142,38 @@ class Mpc:
 		''' Toggle between radio and pod modes.'''
 		self.logger.info("Switching mode")
 		if self.podmode == False:		# its radio mode now, so switch to pod mode
-			self.logger.info("Going to pod mode, playing pod number "+str(self.podnumber))
-			self.podmode = True
-			self.client.consume(1)
-			try:
-				self.client.clear()
-			except:
-				self.logger.info("Failed to clear list", exc_info=True)
-			try:
-				d = self.client.list('file')
-				for i in d:
-					self.logger.info("Song added: "+i)
-					self.client.add(i)
-			except:
-				self.logger.warning("Failed to add list", exc_info=True)
-			if self.podcounter() == 0:
-				print "No podcasts left, switching to radio."
-				self.switchmode()
-				return(0)
-			self.client.play(self.podnumber)
-			self.lastplayed = self.client.currentsong()
-			return(self.podnumber)
+			self.load_pods()
 		else:						# switch to radio mode
 			self.logger.info("Going to radio mode, playing station number "+str(self.station))
 			self.podmode = False
-			self.client.consume = 0
+			self.client.consume(0)
 			self.client.clear()
 			self.loadbbc()
 			self.play()
 		return(self.station)
+		
+	def load_pods(self):
+		self.logger.info("Going to pod mode, playing pod number "+str(self.podnumber))
+		self.podmode = True
+#		self.client.consume(1)
+		try:
+			self.client.clear()
+		except:
+			self.logger.info("Failed to clear list", exc_info=True)
+		try:
+			d = self.client.list('file')
+			for i in d:
+				self.logger.info("Song added: "+i)
+				self.client.add(i)						# this builds the playlist
+		except:
+			self.logger.warning("Failed to add list", exc_info=True)
+		if self.podcounter() == 0:
+			print "No podcasts left, switching to radio."
+			self.switchmode()
+			return(0)
+		self.client.play(self.podnumber)
+		self.lastplayed = self.client.currentsong()
+		return(self.podnumber)	
 	
 	def deleteFile(self):
 		'''Delete the mp3 that is currently playing and update db.'''
@@ -398,7 +409,11 @@ class Mpc:
 		if self.playState == self.STOPPED:
 			return(self.STOPPEDPROGNAME)
 		else:
-			return(self.myBBC.bbcname[self.station])
+			if self.podmode:
+				print 'Progname: not stopped'
+				return(MPDClient.currentsong())
+			else:
+				return(self.myBBC.bbcname[self.station])
 	
 	def oldprogname(self):
 		"""Fetch the name of the currently playing programme or podcast."""

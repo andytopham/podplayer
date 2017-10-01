@@ -55,7 +55,9 @@ class Executive:
 				from mpc2 import Mpc
 				import gpio
 				self.myGpio = gpio.Gpio()
-				self.myMpc = Mpc()
+				self.myMpc = Mpc(False, True)		# Test mode, podmode
+				count = self.myMpc.podcounter()
+#				print 'Podcasts: ', count 
 				self.mySystem = System()
 				host = self.mySystem.return_hostname()
 				self.programmename = self.myMpc.progname()
@@ -108,9 +110,14 @@ class Executive:
 	def cleanup(self, string):
 		self.ending = True
 		print 'Cleaning up:', string
-		self.myInfoDisplay.t.cancel()	# stop updating the info row
-		self.t.cancel()					# stop the audio timer
-		self.dt.cancel					# stop the debug timer
+		try:
+			self.t.cancel()					# stop the audio timer
+		except:
+			print 'Audio timer had not started'
+		try:
+			self.dt.cancel					# stop the debug timer
+		except:
+			print 'Debug timer had not started'
 		self.myInfoDisplay.clear()
 		self.myInfoDisplay.writerow(0,string)
 		self.myInfoDisplay.writerow(1, self.error_string)
