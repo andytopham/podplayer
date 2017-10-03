@@ -40,11 +40,17 @@ mkdir fonts
 cd fonts
 curl -sL https://github.com/chrissimpkins/Hack/releases/download/v2.018/Hack-v2_018-ttf.tar.gz | tar xz
 cd /home/pi
+
 echo 'Configure system files'
 cd /home/pi/master/podplayer
-cp mpd.conf /etc
-cp startradio /etc/init.d
-chmod 755 /etc/init.d/startradio
+# cp mpd.conf /etc
+# cp startradio /etc/init.d
+# chmod 755 /etc/init.d/startradio
+cp startradio.service /lib/systemd/system
+chmod 644 /lib/systemd/system/startradio.service
+systemctl daemon-reload
+systemctl enable startradio.service
+
 # update-rc.d startradio defaults
 cp sampleconfig.py config.py
 chmod 666 config.py
@@ -55,4 +61,5 @@ chown pi log
 echo '*************************'
 echo 'You still need to:'
 echo '1. update the keys in the config.py file'
+echo '2. Reboot'
 

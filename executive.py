@@ -4,7 +4,7 @@
 
 import time, datetime, logging, subprocess, sys
 # import gpio
-import infodisplay, keyboardpoller, keys
+import infodisplay, keyboardpoller, keys, mpc2
 from system import System
 import threading
 # import timeout
@@ -41,8 +41,8 @@ class Executive:
 	def startup(self, verbosity):
 		'''Initialisation for the objects that have variable startup behaviour'''
 		self.myInfoDisplay = infodisplay.InfoDisplay()
-		self.myKey = keyboardpoller.KeyboardPoller()
-		self.myKey.start()
+#		self.myKey = keyboardpoller.KeyboardPoller()
+#		self.myKey.start()
 		try:
 			if keys.board == 'emulator':
 				import gpio_emulator
@@ -51,24 +51,35 @@ class Executive:
 				self.myMpc = mpc_emulator.Mpc()
 				host = 'dummy host'
 				self.programmename = 'dummy prog\nTest\nSecond row'
+			if keys.board == 'lcd':
+				host = 'rotary host'
+				import rotary
+				self.myGpio = rotary.Rotary()
+				self.myMpc = mpc2.Mpc()
+				print 'mpc has been setup'
+#				count = self.myMpc.podcounter()
+				self.mySystem = System()
+				host = self.mySystem.return_hostname()
+				print 'Hostname:', host
+				self.programmename = self.myMpc.progname()
+				print 'Prog:', self.programmename
+#				remaining = self.myMpc.check_time_left()
 			else:
 				from mpc2 import Mpc
 				import gpio
 				self.myGpio = gpio.Gpio()
 				self.myMpc = Mpc(False, True)		# Test mode, podmode
 				count = self.myMpc.podcounter()
-#				print 'Podcasts: ', count 
 				self.mySystem = System()
 				host = self.mySystem.return_hostname()
 				self.programmename = self.myMpc.progname()
 				remaining = self.myMpc.check_time_left()
 		except:
 			self.cleanup('Failed to start gpio')
-		if keys.board == 'lcd':					 # rotary encoder
-			self.myRotary = rotary.Rotary()		# set the interrupts up
-		self.myInfoDisplay.writerow(1,host)
-		self.myInfoDisplay.prog = self.programmename
+		self.myInfoDisplay.writerow(0,host)
 		self.myInfoDisplay.update_display()
+		time.sleep(2)
+		self.myInfoDisplay.prog = self.myMpc.progname()
 		self.ending = False
 		self.t = threading.Timer(AUDIOTIMEOUT, self.audiofunc)
 		self.t.start()
@@ -110,6 +121,7 @@ class Executive:
 	def cleanup(self, string):
 		self.ending = True
 		print 'Cleaning up:', string
+		self.logger.warning('Cleanup: '+string)
 		try:
 			self.t.cancel()					# stop the audio timer
 		except:
@@ -121,10 +133,9 @@ class Executive:
 		self.myInfoDisplay.clear()
 		self.myInfoDisplay.writerow(0,string)
 		self.myInfoDisplay.writerow(1, self.error_string)
-		self.myInfoDisplay.writerow(2, '                    ')
 		time.sleep(2)
 		self.myInfoDisplay.cleanup()	# needed to stop weather polling.
-		self.myKey.cleanup()
+#		self.myKey.cleanup()
 		self.logger.error(string)
 		self.myMpc.cleanup()
 		self.myGpio.cleanup()
@@ -132,6 +143,7 @@ class Executive:
 		print threading.enumerate()		# should just show the main thread
 		self.myInfoDisplay.writerow(2, '                    ')
 		self.logger.warning('Finished exec cleanup')
+		print 'All done'
 		sys.exit(0)
 
 	def chk_key(self):
@@ -167,9 +179,8 @@ class Executive:
 		self.lasttime = time.time()		# has to be here to avoid long initial delay showing.
 		while True:
 			time.sleep(.2)
-			self.chk_key()				# poll to see if there has been a key pressed
+#			self.chk_key()				# poll to see if there has been a key pressed
 			if self.myMpc.chk_station_load():
-				self.logger.warning('Going to cleanup')
 				self.cleanup('Station load')
 			try:
 				if self.die == True:
@@ -181,7 +192,6 @@ class Executive:
 			except KeyboardInterrupt:
 				self.cleanup('Keyboard interrupt')
 			except:			# all other errors - should never get here
-#				print "Unexpected error:", sys.exc_info()[0]
 				print "Unexpected error:", sys.exc_info()
 				self.cleanup('Master loop error')
 
@@ -200,22 +210,19 @@ class Executive:
 		return(0)
 
 	def get_rotary_value(self):
-		self.myRotary.LockRotary.acquire()               # get lock for rotary switch
-		NewCounter = self.myRotary.Rotary_counter         # get counter value
-		self.myRotary.Rotary_counter = 0                  # RESET IT TO 0
-		self.myRotary.LockRotary.release()               # and release lock
+		NewCounter = self.myGpio.Rotary_counter         # get counter value
+		self.myGpio.Rotary_counter = 0                  # RESET IT TO 0
 		if (NewCounter > 0):               # Counter has CHANGED
 			return(BUTTONNEXT)
 		if (NewCounter < 0):               # Counter has CHANGED
 			return(BUTTONPREV)
 		return(0)
 
-	
 	def process_button_presses(self):
 		'''Poll for each of the button presses and return the new prog name.'''
 #		try:
 		if keys.board == 'lcd':						# this has the rotary encoder
-			if self.myRotary.switch == True:
+			if self.myGpio.switch == True:
 				button = BUTTONHALT
 				return(1)
 			button = self.get_rotary_value()

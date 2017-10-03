@@ -6,6 +6,7 @@
 
 import Adafruit_CharLCD as LCD
 import threading, Queue
+import time
 
 class Screen(threading.Thread):
 	def __init__(self, rows = 2):
@@ -33,6 +34,12 @@ class Screen(threading.Thread):
 			myevent = self.Event.wait(.2)	# wait for this timeout or the flag being set.
 		print 'Lcd exiting'
 		
+	def cleanup(self):
+		self.myevent = True
+		self.Event.set()		# critical. Only way to set Event.
+		time.sleep(10)
+		return(0)
+	
 	def info(self):
 		return(self.rowcount, self.rowlength)
 
@@ -67,4 +74,15 @@ class Screen(threading.Thread):
 if __name__ == "__main__":
 	print "Running lcd class as a standalone app"
 	myLcd = Screen()
+	myLcd.start()
+	time.sleep(4)
+	print 'Sending first string'
+	myLcd.q.put([0, 'First test message'])
+	myLcd.q.join()							# wait for queue to empty
+#	time.sleep(4)
+	print 'Cleaning up'
+	myLcd.cleanup()
+	print 'done'
+	
+	
 	

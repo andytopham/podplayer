@@ -29,15 +29,15 @@ class InfoDisplay(threading.Thread):
 		self.logger.info("Starting InfoDisplay class")
 		self.chgvol_flag = False
 		self.vol_string = ' '
-		print 'Infodisplay board = ',keys.board
 		if keys.board not in ['oled4', 'oled2', 'lcd', 'uoled', 'tft', 'emulator']:
 			print 'Error: display type not recognised.'
 			sys.exit()			
+		print 'Infodisplay board = ',keys.board
 		board = importlib.import_module(keys.board)
 		self.myScreen = board.Screen()
 		if keys.board == 'oled2':
 			self.myScreen.set_rowcount(2)
-		self.myWeather = Weather(keys.key, keys.locn)
+		self.myWeather = Weather(keys.wunder, keys.locn)
 		self.myWeather.start()
 		self.ending = False
 		self.myScreen.start()
@@ -81,6 +81,8 @@ class InfoDisplay(threading.Thread):
 	def writerow(self, row, string):
 		if row < self.rowcount:
 			self.myScreen.q.put([row, string])	# add to the queue
+		else:
+			print 'Trying to write to non-existent row:', row
 
 	def update_display(self):
 		'''Update the whole display, including the prog info and the status line.'''
@@ -96,7 +98,7 @@ class InfoDisplay(threading.Thread):
 			print 'refreshing display update with timer = ',self.timer
 			self.t = threading.Timer(self.timer, self.update_display)
 			self.t.start()
-			self.t.name = 'displayupdate'
+			self.t.name = 'update_display'
 		return(0)
 
 	def _update_info_row(self):

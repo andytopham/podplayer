@@ -34,6 +34,7 @@ class Weather(threading.Thread):
 		print 'Weather exiting.'
 
 	def gettemperature(self,bbckey):
+		print 'Fetching BBC temperature'
 		self.logger.debug("Fetching bbc temperature")
 		try:
 			string = 'http://open.live.bbc.co.uk/weather/feeds/en/'+bbckey+'/observations.rss'
@@ -61,6 +62,7 @@ class Weather(threading.Thread):
 		return(temperature)
 
 	def wunder(self,key,locn):
+		print 'Fetching wunder temperature'
 		self.logger.debug("Fetching wunder temperature")
 		f = urllib2.urlopen('http://api.wunderground.com/api/'+key+'/conditions/q/'+locn+'.json')
 		json_string = f.read()

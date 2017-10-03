@@ -6,7 +6,7 @@ import RPi.GPIO as GPIO
 import threading
 from time import sleep
 # import Adafruit_CharLCD as LCD
-import lcd
+# import lcd
 
 Enc_A = 4              # Encoder input A: input GPIO 4 
 Enc_B = 17             # Encoder input B: input GPIO 14 
@@ -14,6 +14,8 @@ Sw = 18
 
 class Rotary():
 	def __init__(self):
+		print 'Setting up rotary switch'
+#		GPIO.cleanup()
 		self.Rotary_counter = 0           # Start counting from 0
 		self.Current_A = 1               # Assume that rotary switch is not 
 		self.Current_B = 1               # moving while we init software
@@ -27,13 +29,19 @@ class Rotary():
 		GPIO.add_event_detect(Enc_B, GPIO.RISING, callback=self.rotary_interrupt)             # NO bouncetime 
 		GPIO.add_event_detect(Sw, GPIO.FALLING, callback=self.switch_interrupt)
 		self.switch = False
+		print 'Rotary switch has been setup'
 		return
 
 	def switch_interrupt(self, junk):
 		print "Rotary switch"
 		self.switch = True
 		return
-		
+	
+	def cleanup(self):
+		print 'Rotary exiting'
+		GPIO.cleanup()
+		return
+			
 	def rotary_interrupt(self, A_or_B):
 		Switch_A = GPIO.input(Enc_A)
 		Switch_B = GPIO.input(Enc_B)
@@ -55,10 +63,10 @@ if __name__ == "__main__":
 	Volume = 0                           # Current Volume   
 	NewCounter = 0                        # for faster reading with locks
 	myRotary = Rotary()
-	myRotary.init()                              # Init interrupts, GPIO, ...
+#	myRotary.init()                              # Init interrupts, GPIO, ...
 #	lcd = LCD.Adafruit_CharLCD(27, 22, 25, 24, 23, 5, 16, 2, 21) 
-	myLcd = lcd.Screen()
-	myLcd.writerow(0, 'LCD initialised')
+#	myLcd = lcd.Screen()
+#	myLcd.writerow(0, 'LCD initialised')
 	while True :                        # start test 
 		sleep(0.1)                        # sleep 100 msec
 		myRotary.LockRotary.acquire()               # get lock for rotary switch
@@ -72,4 +80,4 @@ if __name__ == "__main__":
 			if Volume > 100:               # limit volume to 0...100
 				Volume = 100
 			print NewCounter, Volume         # some test print
-			myLcd.writerow(1, str(Volume)+' ')
+#			myLcd.writerow(1, str(Volume)+' ')

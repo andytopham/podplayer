@@ -1,0 +1,20 @@
+# This is the autostart file for the radio app. Controls systemd.
+# Permissions need to be 644
+# Needs to be stored in /lib/systemd/system
+# Commands to load it....
+#  sudo systemctl daemon-reload
+#  sudo systemctl enable myweather.service
+#  sudo reboot
+#  sudo systemctl status myweather.service  -- just to check its running
+
+
+[Unit]
+Description=My Radio Service
+After=multi-user.target
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/python /home/pi/master/podplayer/radio.py > /home/pi/master/podplayer/log/radio.log 2>&1
+
+[Install]
+WantedBy=multi-user.target
