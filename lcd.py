@@ -40,6 +40,9 @@ class Screen(threading.Thread):
 		time.sleep(10)
 		return(0)
 	
+	def isalive(self):
+		return(t.is_alive())
+		
 	def info(self):
 		return(self.rowcount, self.rowlength)
 

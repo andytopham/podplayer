@@ -5,29 +5,30 @@
 import RPi.GPIO as GPIO
 import threading
 from time import sleep
-# import Adafruit_CharLCD as LCD
-# import lcd
-
-Enc_A = 4              # Encoder input A: input GPIO 4 
-Enc_B = 17             # Encoder input B: input GPIO 14 
-Sw = 18
 
 class Rotary():
-	def __init__(self):
+	def __init__(self, channel = 0):
 		print 'Setting up rotary switch'
-#		GPIO.cleanup()
+		if channel == 0:
+			self.Enc_A = 4              # Encoder input A: input GPIO 4 
+			self.Enc_B = 17             # Encoder input B: input GPIO 14 
+			self.Sw = 18
+		else:
+			self.Enc_A = 16              # Encoder input A: input GPIO 16 
+			self.Enc_B = 19             # Encoder input B: input GPIO 19 
+			self.Sw = 20	
 		self.Rotary_counter = 0           # Start counting from 0
 		self.Current_A = 1               # Assume that rotary switch is not 
 		self.Current_B = 1               # moving while we init software
 		self.LockRotary = threading.Lock()      # create lock for rotary switch
 		GPIO.setwarnings(True)
 		GPIO.setmode(GPIO.BCM)               # Use BCM mode
-		GPIO.setup(Enc_A, GPIO.IN, GPIO.PUD_UP)             
-		GPIO.setup(Enc_B, GPIO.IN, GPIO.PUD_UP)
-		GPIO.setup(Sw, GPIO.IN, GPIO.PUD_UP)
-		GPIO.add_event_detect(Enc_A, GPIO.RISING, callback=self.rotary_interrupt)             # NO bouncetime 
-		GPIO.add_event_detect(Enc_B, GPIO.RISING, callback=self.rotary_interrupt)             # NO bouncetime 
-		GPIO.add_event_detect(Sw, GPIO.FALLING, callback=self.switch_interrupt)
+		GPIO.setup(self.Enc_A, GPIO.IN, GPIO.PUD_UP)             
+		GPIO.setup(self.Enc_B, GPIO.IN, GPIO.PUD_UP)
+		GPIO.setup(self.Sw, GPIO.IN, GPIO.PUD_UP)
+		GPIO.add_event_detect(self.Enc_A, GPIO.RISING, callback=self.rotary_interrupt)             # NO bouncetime 
+		GPIO.add_event_detect(self.Enc_B, GPIO.RISING, callback=self.rotary_interrupt)             # NO bouncetime 
+		GPIO.add_event_detect(self.Sw, GPIO.FALLING, callback=self.switch_interrupt)
 		self.switch = False
 		print 'Rotary switch has been setup'
 		return
@@ -39,19 +40,19 @@ class Rotary():
 	
 	def cleanup(self):
 		print 'Rotary exiting'
-		GPIO.cleanup()
+#		GPIO.cleanup()
 		return
 			
 	def rotary_interrupt(self, A_or_B):
-		Switch_A = GPIO.input(Enc_A)
-		Switch_B = GPIO.input(Enc_B)
+		Switch_A = GPIO.input(self.Enc_A)
+		Switch_B = GPIO.input(self.Enc_B)
 		if self.Current_A == Switch_A and self.Current_B == Switch_B:      # Same interrupt as before (Bouncing)?
 			return                              # ignore interrupt!
 		self.Current_A = Switch_A                        # remember new state
 		self.Current_B = Switch_B                        # for next bouncing check
 		if (Switch_A and Switch_B):                  # Both one active? Yes -> end of sequence
 			self.LockRotary.acquire()                  # get lock 
-			if A_or_B == Enc_B:                     # Turning direction depends on 
+			if A_or_B == self.Enc_B:                     # Turning direction depends on 
 				self.Rotary_counter += 1                  # which input gave last interrupt
 			else:                              # so depending on direction either
 				self.Rotary_counter -= 1                  # increase or decrease counter

@@ -20,12 +20,14 @@ NEXT_STATION_ROW = 8
 ###
 SCROLL_PAUSE = -5
 INFOROWUPDATEPERIOD = 60
+CLEANUPTIMEOUT = 5
 
 class InfoDisplay(threading.Thread):
 	'''	Richer info on the oled. '''
 	def __init__(self, testmode = False, scrolling = False):
 		self.logger = logging.getLogger(__name__)
 		threading.Thread.__init__(self, name='infodisplay')
+		self.Event = threading.Event()
 		self.logger.info("Starting InfoDisplay class")
 		self.chgvol_flag = False
 		self.vol_string = ' '
@@ -59,6 +61,7 @@ class InfoDisplay(threading.Thread):
 	def cleanup(self):
 		self.ending = True	# must be first line.
 		time.sleep(1)		# these delays needed to get cleanup to work
+		self.Event.set()	# stop the display updates
 		try:
 			if self.rowcount == 2:
 				if self.scrolling:
@@ -70,8 +73,13 @@ class InfoDisplay(threading.Thread):
 		except:
 			print 'Scroll timer not started'
 		self.myWeather.Event.set()			# send the stop signal
+		self.myWeather.join(CLEANUPTIMEOUT)				# wait for thread to finish
+		if self.myWeather.is_alive():					# so we timed out
+			print 'Weather thread did not die'
 		self.myScreen.Event.set()
-		time.sleep(2)
+		self.myScreen.join(CLEANUPTIMEOUT)				# wait for thread to finish
+		if self.myScreen.is_alive():					# so we timed out
+			print 'Screen thread did not die'
 		self.logger.info('Finished infodisplay cleanup.')
 
 	def clear(self):
@@ -83,6 +91,14 @@ class InfoDisplay(threading.Thread):
 			self.myScreen.q.put([row, string])	# add to the queue
 		else:
 			print 'Trying to write to non-existent row:', row
+			
+	def run(self):
+		print 'Starting infodisplay thread'
+		myevent = False
+		while not myevent:
+			self.update_display()
+			myevent = self.Event.wait(self.timer)		# wait for this timeout or the flag being set.
+		print 'Infodisplay exiting.'
 
 	def update_display(self):
 		'''Update the whole display, including the prog info and the status line.'''
@@ -94,11 +110,11 @@ class InfoDisplay(threading.Thread):
 				self.myScreen.q.put([TITLE_ROW,self.prog[:self.rowlength]])		# just show one row
 		else:
 			self._show_prog_info(self.prog)
-		if not self.ending:
-			print 'refreshing display update with timer = ',self.timer
-			self.t = threading.Timer(self.timer, self.update_display)
-			self.t.start()
-			self.t.name = 'update_display'
+#		if not self.ending:
+#			print 'refreshing display update with timer = ',self.timer
+#			self.t = threading.Timer(self.timer, self.update_display)
+#			self.t.start()
+#			self.t.name = 'update_display'
 		return(0)
 
 	def _update_info_row(self):

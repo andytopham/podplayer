@@ -55,6 +55,7 @@ class Executive:
 				host = 'rotary host'
 				import rotary
 				self.myGpio = rotary.Rotary()
+				self.myVol = rotary.Rotary(1)
 				self.myMpc = mpc2.Mpc()
 				print 'mpc has been setup'
 #				count = self.myMpc.podcounter()
@@ -76,8 +77,10 @@ class Executive:
 				remaining = self.myMpc.check_time_left()
 		except:
 			self.cleanup('Failed to start gpio')
-		self.myInfoDisplay.writerow(0,host)
-		self.myInfoDisplay.update_display()
+#		self.myInfoDisplay.writerow(0,host)
+#		self.myInfoDisplay.update_display()
+		self.myInfoDisplay.prog = self.programmename
+		self.myInfoDisplay.start()
 		time.sleep(2)
 		self.myInfoDisplay.prog = self.myMpc.progname()
 		self.ending = False
@@ -85,9 +88,24 @@ class Executive:
 		self.t.start()
 		self.t.name = 'audiot'
 		print threading.enumerate()		# helps debug
+		print 'Thread count: ', threading.active_count()
+#		self.check_threads()
+		if False:								# set to true for testing
+			self.cleanup('Forced cleanup')
 		self.dt = threading.Timer(DEBUGTIMEOUT, self.debugfunc)
 #		self.dt.start()
 		self.dt.name = 'debugt'
+		
+	def check_threads(self):
+		# a routine to check all the threads that should be started actually are.
+		if myInfoDisplay.is_alive():
+			print 'Infodisplay is alive'
+		else:
+			print 'Infodisplay is dead'
+		for threadname in ('lcd', 'rotary'):
+			if not threadname.is_alive():
+				print 'Missing thread: ', threadname
+		
 
 	def audiofunc(self):
 		'''Called by the audio timeout Timer. Implements the actual timeout function.'''
@@ -139,9 +157,10 @@ class Executive:
 		self.logger.error(string)
 		self.myMpc.cleanup()
 		self.myGpio.cleanup()
-		time.sleep(3)
+		self.myVol.cleanup()
+		time.sleep(2)
 		print threading.enumerate()		# should just show the main thread
-		self.myInfoDisplay.writerow(2, '                    ')
+#		self.myInfoDisplay.writerow(2, '                    ')
 		self.logger.warning('Finished exec cleanup')
 		print 'All done'
 		sys.exit(0)
@@ -209,13 +228,22 @@ class Executive:
 		self.myInfoDisplay.show_next_station(prog)
 		return(0)
 
-	def get_rotary_value(self):
+	def get_station_value(self):
 		NewCounter = self.myGpio.Rotary_counter         # get counter value
 		self.myGpio.Rotary_counter = 0                  # RESET IT TO 0
 		if (NewCounter > 0):               # Counter has CHANGED
 			return(BUTTONNEXT)
 		if (NewCounter < 0):               # Counter has CHANGED
 			return(BUTTONPREV)
+		return(0)
+		
+	def get_volume_value(self):
+		NewCounter = self.myVol.Rotary_counter         # get counter value
+		self.myVol.Rotary_counter = 0                  # RESET IT TO 0
+		if (NewCounter > 0):               # Counter has CHANGED
+			return(BUTTONVOLUP)
+		if (NewCounter < 0):               # Counter has CHANGED
+			return(BUTTONVOLDOWN)
 		return(0)
 
 	def process_button_presses(self):
@@ -225,7 +253,9 @@ class Executive:
 			if self.myGpio.switch == True:
 				button = BUTTONHALT
 				return(1)
-			button = self.get_rotary_value()
+			button = self.get_station_value()
+			if button == 0:
+				button = self.get_volume_value()
 		else:										# push buttons
 			button = self._processbuttons()
 		if button == 0:
